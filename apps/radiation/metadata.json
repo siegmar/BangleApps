@@ -5,10 +5,12 @@
   "icon": "app-icon.js",
   "type": "app",
   "supports": ["BANGLEJS2"],
+  "readme": "README.md",
   "tags": "health",
   "storage": [
     {"name":"radiation.app.js","url":"app.js"},
     {"name":"radiation.img","url":"app-icon.js","evaluate":true}
 	]
 } 
+
 
