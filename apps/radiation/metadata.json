@@ -4,7 +4,7 @@
   "shortName":"RAD",
   "version": "0.1.0",
   "description": "A detailed description of my great app",
-  "icon": "app-icon.js",
+  "icon": "radiation.png",
   "type": "app",
   "supports": ["BANGLEJS2"],
   "tags": "health",
@@ -14,3 +14,4 @@
     {"name":"radiation.img","url":"app-icon.js","evaluate":true}
 	]
 } 
+
