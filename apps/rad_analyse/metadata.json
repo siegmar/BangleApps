@@ -2,7 +2,7 @@
   "id": "rad_analyse",
   "name": "Radiation Analysis",
   "shortName":"rad_ana",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A detailed description of my great app",
   "icon": "rad_analyse.png",
   "type": "app",
@@ -11,6 +11,7 @@
   "readme": "README.md",
   "storage": [
     {"name":"rad_analyse.app.js","url":"app.js"},
-    {"name":"rad_analyse.png","url":"app-icon.js","evaluate":true}
+    {"name":"rad_analyse.img","url":"app-icon.js","evaluate":true}
 	]
 } 
+
