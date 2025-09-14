@@ -280,14 +280,180 @@ let GMZ_Impulse_pro_Minute_neu_flag;
 let GMZ_Minuten_zaehler=1;
 let GMZ_Minuten_zaehler_merker=0;
 let color_merker=1;
+
+
 //************************************************
+// GLOBALE VARIABLE für Datei-Liste
+var GLOBAL_FILE_LIST = {
+    files: [],      // Sortierte Dateinamen
+    count: 0        // Anzahl Dateien
+};
 
-
-
-
+  
 
 //*********************************** Programme *****************************
-  // Korrigierter CPM-Visualizer für kontinuierliches Wachsen
+
+
+// === DATEILISTE SPEICHERN MIT OPEN ===
+function saveFileList(filename) 
+{
+    try {
+        console.log("=== SPEICHERE DATEILISTE ===");
+        console.log("Dateiname:", filename);
+        
+        // Dateiliste als JSON speichern
+        var fileListJSON = JSON.stringify(GLOBAL_FILE_LIST.files);
+        
+        // MIT OPEN speichern
+        var f = require("Storage").open(filename, "w");
+        f.write(fileListJSON);
+        
+        console.log(" Dateiliste gespeichert!");
+        console.log("Anzahl Einträge:", GLOBAL_FILE_LIST.files.length);
+        return true;
+        
+    } catch (e) {
+        console.log("? Fehler beim Speichern:", e.message);
+        return false;
+    }
+}
+
+
+//------------
+
+// === DATEILISTE LADEN MIT OPEN ===
+function loadFileList(filename) {
+    try {
+        console.log("=== LADE DATEILISTE ===");
+        console.log("Dateiname:", filename);
+        
+        // MIT OPEN laden
+        var f = require("Storage").open(filename, "r");
+        var fileSize = f.getLength();
+        
+        if (fileSize === 0) {
+            console.log("? Leere Datei:", filename);
+            return false;
+        }
+        
+        var content = f.read(fileSize);
+        if (!content) {
+            console.log("? Kein Inhalt in:", filename);
+            return false;
+        }
+        
+        // JSON parsen
+        var loadedFiles = JSON.parse(content);
+        if (Array.isArray(loadedFiles)) {
+            GLOBAL_FILE_LIST.files = loadedFiles;
+            GLOBAL_FILE_LIST.count = loadedFiles.length;
+            
+            console.log(" Dateiliste geladen!");
+            console.log("Anzahl Einträge:", GLOBAL_FILE_LIST.count);
+            return true;
+        } else {
+            console.log("? Ungültiges Format:", typeof loadedFiles);
+            return false;
+        }
+        
+    } catch (e) {
+        console.log("? Fehler beim Laden:", e.message);
+        return false;
+    }
+}
+
+//-----
+
+//------------
+function radiation_file_list(filename) 
+{   
+           try {
+  var f = require("Storage").open(filename, "a");
+  var fileSize = f.getLength();
+            
+  if (fileSize === 0) 
+	{                                    // es gibt die Liste noch nicht
+	  var anzahl= populateFileList();    // gibt die Anzahl  der gefunden LOG Datein wie z.B RADIATION_20_25-08-010.csv
+			                                 // Die komplette Liste befindet sich in der globalen Variablen GLOBAL_FILE_LIST.files 
+                                       // Anzahl der gefunden Datein in  globalen Variablen GLOBAL_FILE_LIST.count
+		if ( anzahl > 0 )                  // ist die Liste vorhanden ?
+	  {
+		  return saveFileList("RADIATION_LIST.txt"); 
+				 
+		}
+			   
+    console.log("Datei wird erzeugt:", filename);
+				
+  } 
+	else 
+	{                                     // Liste ist schon vorhanden und wird jetzt geladen 
+	  
+    console.log("********** LISTE WIRD GELADEN ");
+    
+    return loadFileList(filename);   
+	}
+                 
+        } catch (e) {
+            console.log("Log Fehler:", e);
+            return false;
+        }
+}		
+		
+//---------------------	
+
+
+// prüft ob Datein zum anschauen vorhanden sind 
+// === ROUTINE 1: Dateinamen in Liste eintragen (neueste oben) ===
+function populateFileList() {
+    try {
+        console.log("=== POPULATE FILE LIST ===");
+        
+        // Alle Dateien auflisten
+        var allFiles = require("Storage").list();
+        var radiationFiles = [];
+        
+        // Nur RADIATION_*.csv Dateien sammeln MIT Bereinigung
+        for (var i = 0; i < allFiles.length; i++) {
+            var filename = allFiles[i];
+            if (typeof filename === 'string') {
+                // STEUERZEICHEN BEREINIGEN
+                var cleanName = "";
+                for (var j = 0; j < filename.length; j++) {
+                    var charCode = filename.charCodeAt(j);
+                    if (charCode >= 32 && charCode <= 126) {
+                        cleanName += filename.charAt(j);
+                    }
+                }
+                
+                if (cleanName.startsWith("RADIATION_") && cleanName.endsWith(".csv")) {
+                    radiationFiles.push(cleanName);
+                }
+            }
+        }
+        
+        // Sortieren: neueste zuerst
+ //      radiationFiles.sort().reverse();
+        
+        // Globale Liste füllen
+        GLOBAL_FILE_LIST.files = radiationFiles;
+        GLOBAL_FILE_LIST.count = radiationFiles.length;
+        
+        console.log("Gefundene Dateien:", GLOBAL_FILE_LIST.count);
+        return GLOBAL_FILE_LIST.count;
+        
+    } catch (e) {
+        console.log("Fehler beim Populate:", e.message);
+        GLOBAL_FILE_LIST.files = [];  // ✅ IN SCOPE!
+        GLOBAL_FILE_LIST.count = 0;   // ✅ IN SCOPE!
+        return 0;
+    }
+}
+
+
+
+
+
+// Korrigierter CPM-Visualizer für kontinuierliches Wachsen
 
 var CPMVisualizer = {
     enabled: false,
@@ -618,6 +784,8 @@ var DailyLogger = {
             var fileSize = f.getLength();
             
             if (fileSize === 0) {
+                
+                GLOBAL_FILE_LIST.count++;                 // die Anzahl der Log Datein wird erhöht!
                 var header = "time,cpm\n";
                 f.write(header + csvLine);
                 console.log("Neue Datei:", filename);
@@ -2335,7 +2503,7 @@ function startScan()
 
 
 //------------------ Taste Abfrage --------------  ---
-  datei_liste ();  
+//  datei_liste ();  
 
 //require("Storage").erase("RADIATION_2025-08-31.csv");  // löscht Datein
 //require("Storage").erase("RADIATION_2025-08-31.csv\u0001");  // löscht Datein
@@ -2360,7 +2528,46 @@ console.log("\nIDE Connected:", isIDEConnected() );
 
 g.clear();
 
-//robert
+// RADIATION_LIST.txt
+//  dauert zu lang !!! 3 s     var anzahl= populateFileList();
+//       console.log("--***--->Gefundene Dateien:", anzahl );
+// test      anzahl =0;
+      
+     // if (  GLOBAL_FILE_LIST.count > 0 )   // nur wenn auch LOG Datein vorhanden sind !!
+      //{
+
+
+//vati
+
+
+ var startTime = Date.now();
+
+// wenn nur RADIATION_LIST.txt geladen wird dauert es 25 ms 
+// wenn RADIATION_LIST.txt erzeugt werden muss, dauert es 3197 ms !! 
+
+var filename = "RADIATION_LIST.txt";
+
+var rueckwert = radiation_file_list(filename);
+		
+    if (rueckwert === false)
+		{
+		   console.log("Datei nicht vorhanden :", filename);
+		}
+		else
+		{
+		   console.log("Datei erfolgreich wird erzeugt:", filename);
+		}
+
+var endTime = Date.now();
+var executionTime = endTime - startTime;
+
+console.log("--->RADIATION_LIST.txt  Ausführungszeit:", executionTime, "ms");
+  
+  
+
+
+
+
 Bangle.loadWidgets();      // muss nur einmal geladen werden 
 Bangle.drawWidgets();      // 
 
@@ -2368,6 +2575,14 @@ Bangle.drawWidgets();      //
 betriebsmodus = GMZ_GROSS ;
 
 //betriebsmodus = SERVICE;
+//vati
+  
+// --> dauert 3s populateFileList();
+
+
+
+//console.log(">>>>>>>>>>>>>Gefundene Dateien:", GLOBAL_FILE_LIST.count);
+
 
 
 
@@ -2384,12 +2599,12 @@ Bangle.setOptions({lockTimeout: 5000}) ;// turn off the timeout
 
 
 //vati
-DailyLogger.showToday();
+//DailyLogger.showToday();
 
 //DailyLogger.getFileSize
 
 
-console.log("Dateilänge :",DailyLogger.getFileSize  ,"Bytes ");
+//console.log("Dateilänge :",DailyLogger.getFileSize  ,"Bytes ");
 
 
 
@@ -2430,15 +2645,29 @@ function exitToAuswertung() {
     }
 }
 
-
+//vati
 Bangle.on('swipe', function(directionLR, directionUD) {
     if (directionLR === 1) {
-        // LINKS-NACH-RECHTS = Zur Auswertung
+        
+//  dauert zu lang !!! 3 s     var anzahl= populateFileList();
+//       console.log("--***--->Gefundene Dateien:", anzahl );
+// test      anzahl =0;
+      
+     // if (  GLOBAL_FILE_LIST.count > 0 )   // nur wenn auch LOG Datein vorhanden sind !!
+      //{
+      // LINKS-NACH-RECHTS = Zur Auswertung
         console.log("Wechsel zur Auswertungs-App");
         exitToAuswertung();
+        
+     // }
         return;
     }
     
+  
+  
+  
+  
+  
     // Rest deiner Swipe-Logik...
 });
 
