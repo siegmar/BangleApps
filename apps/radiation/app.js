@@ -285,82 +285,88 @@ let color_merker=1;
 //************************************************
 // GLOBALE VARIABLE für Datei-Liste
 var GLOBAL_FILE_LIST = {
-    files: [],      // Sortierte Dateinamen
-    count: 0        // Anzahl Dateien
+    files: [],                      // Sortierte Dateinamen
+    count: 0,                       // Anzahl Dateien
+    dateiname:"RADIATION_LIST.txt"  // hier stehen die Dateinamen der gespeicherten Log Datein
 };
 
-  
+//  GLOBAL_FILE_LIST.dateiname
 
 //*********************************** Programme *****************************
 
-
-// === DATEILISTE SPEICHERN MIT OPEN ===
-function saveFileList(filename) 
-{
+// === DATEILISTE SPEICHERN OHNE JSON ===
+function saveFileList(filename) {
     try {
-        console.log("=== SPEICHERE DATEILISTE ===");
-        console.log("Dateiname:", filename);
+        console.log("=== SPEICHERE DATEILISTE OHNE JSON ===");
+        console.log("Einträge:", GLOBAL_FILE_LIST.files.length);
         
-        // Dateiliste als JSON speichern
-        var fileListJSON = JSON.stringify(GLOBAL_FILE_LIST.files);
-        
-        // MIT OPEN speichern
+        // MIT OPEN schreiben (nicht append!)
         var f = require("Storage").open(filename, "w");
-        f.write(fileListJSON);
         
-        console.log(" Dateiliste gespeichert!");
-        console.log("Anzahl Einträge:", GLOBAL_FILE_LIST.files.length);
+        // ALLE Dateinamen MIT Zeilenumbrüchen
+        var content = "";
+        for (var i = 0; i < GLOBAL_FILE_LIST.files.length; i++) {
+            content += GLOBAL_FILE_LIST.files[i] + "\n";
+        }
+        
+        f.write(content);
+        
+        console.log("✅ Dateiliste gespeichert!");
         return true;
         
     } catch (e) {
-        console.log("? Fehler beim Speichern:", e.message);
+        console.log("❌ Fehler beim Speichern:", e.message);
         return false;
     }
 }
 
-
-//------------
-
-// === DATEILISTE LADEN MIT OPEN ===
+//-----
 function loadFileList(filename) {
     try {
-        console.log("=== LADE DATEILISTE ===");
-        console.log("Dateiname:", filename);
+        console.log("=== LADE DATEILISTE OHNE JSON ===");
         
-        // MIT OPEN laden
+        // MIT OPEN lesen
         var f = require("Storage").open(filename, "r");
         var fileSize = f.getLength();
         
         if (fileSize === 0) {
-            console.log("? Leere Datei:", filename);
+            console.log("❌ Leere Cache-Datei");
+            GLOBAL_FILE_LIST.files = [];
+            GLOBAL_FILE_LIST.count = 0;
             return false;
         }
         
         var content = f.read(fileSize);
         if (!content) {
-            console.log("? Kein Inhalt in:", filename);
+            console.log("❌ Kein Inhalt");
+            GLOBAL_FILE_LIST.files = [];
+            GLOBAL_FILE_LIST.count = 0;
             return false;
         }
         
-        // JSON parsen
-        var loadedFiles = JSON.parse(content);
-        if (Array.isArray(loadedFiles)) {
-            GLOBAL_FILE_LIST.files = loadedFiles;
-            GLOBAL_FILE_LIST.count = loadedFiles.length;
-            
-            console.log(" Dateiliste geladen!");
-            console.log("Anzahl Einträge:", GLOBAL_FILE_LIST.count);
-            return true;
-        } else {
-            console.log("? Ungültiges Format:", typeof loadedFiles);
-            return false;
-        }
+        // ZEILENWEISE aufteilen
+        var lines = content.split('\n').filter(line => line.trim() !== "");
+        
+        // Globale Liste füllen
+        GLOBAL_FILE_LIST.files = lines;
+        GLOBAL_FILE_LIST.count = lines.length;
+        
+        console.log("✅ Dateiliste geladen!");
+        console.log("Anzahl Einträge:", GLOBAL_FILE_LIST.count);
+        return true;
         
     } catch (e) {
-        console.log("? Fehler beim Laden:", e.message);
+        console.log("❌ Fehler beim Laden:", e.message);
+        GLOBAL_FILE_LIST.files = [];
+        GLOBAL_FILE_LIST.count = 0;
         return false;
     }
 }
+
+
+
+
+
 
 //-----
 
@@ -378,7 +384,7 @@ function radiation_file_list(filename)
                                        // Anzahl der gefunden Datein in  globalen Variablen GLOBAL_FILE_LIST.count
 		if ( anzahl > 0 )                  // ist die Liste vorhanden ?
 	  {
-		  return saveFileList("RADIATION_LIST.txt"); 
+		  return saveFileList(GLOBAL_FILE_LIST.dateiname); 
 				 
 		}
 			   
@@ -2545,9 +2551,9 @@ g.clear();
 // wenn nur RADIATION_LIST.txt geladen wird dauert es 25 ms 
 // wenn RADIATION_LIST.txt erzeugt werden muss, dauert es 3197 ms !! 
 
-var filename = "RADIATION_LIST.txt";
+var filename =  GLOBAL_FILE_LIST.dateiname;
 
-var rueckwert = radiation_file_list(filename);
+ var rueckwert = radiation_file_list(filename);
 		
     if (rueckwert === false)
 		{
