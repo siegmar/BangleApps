@@ -103,13 +103,108 @@ function drawCenteredText(text, yPosition, fontSize) {
     }
 }
 
+//------------------
+
+// === AUSRÜCKEN DER LISTE ===
+function removeFromGlobalFileList(filenameToDelete) {
+    try {
+        console.log("=== LISTE AUSRÜCKEN ===");
+        console.log("Vorher:", GLOBAL_FILE_LIST.files.length, "Dateien");
+        console.log("Lösche:", filenameToDelete);
+        
+        // 1. DATEI aus Liste entfernen
+        var newList = [];
+        var removedCount = 0;
+        
+        for (var i = 0; i < GLOBAL_FILE_LIST.files.length; i++) {
+            var currentFile = GLOBAL_FILE_LIST.files[i];
+            if (currentFile !== filenameToDelete) {
+                newList.push(currentFile);
+            } else {
+                removedCount++;
+                console.log("✅ Datei aus Liste entfernt:", currentFile);
+            }
+        }
+        
+        // 2. GLOBALE Liste aktualisieren
+        GLOBAL_FILE_LIST.files = newList;
+        GLOBAL_FILE_LIST.count = newList.length;
+        
+        console.log("Nachher:", GLOBAL_FILE_LIST.count, "Dateien");
+        console.log("Entfernt:", removedCount, "Einträge");
+        
+        if (removedCount > 0) {
+            console.log("✅ Liste erfolgreich aufgerückt!");
+            return true;
+        } else {
+            console.log("ℹ️ Datei nicht in Liste gefunden");
+            return false;
+        }
+        
+    } catch (e) {
+        console.log("❌ Fehler beim Aufrücken:", e.message);
+        return false;
+    }
+}
+
+//-----------------
+
+function saveFileList(filename) {
+    try {
+        console.log("=== SPEICHERE DATEILISTE ===");
+        console.log("Einträge:", GLOBAL_FILE_LIST.files.length);
+        
+        // MIT OPEN schreiben (nicht append!)
+        var f = require("Storage").open(filename, "w");
+        
+        // ALLE Dateinamen MIT Zeilenumbrüchen
+        var content = "";
+        for (var i = 0; i < GLOBAL_FILE_LIST.files.length; i++) {
+            content += GLOBAL_FILE_LIST.files[i] + "\n";
+        }
+        
+        f.write(content);
+        
+        console.log("✅ Dateiliste gespeichert!");
+        return true;
+        
+    } catch (e) {
+        console.log("❌ Fehler beim Speichern:", e.message);
+        return false;
+    }
+}
+
+
+
+//-----------------
+function logDatei_loeschen(dateiname)
+{
+  
+ require("Storage").open(dateiname,"r").erase(); 
+  
+  removeFromGlobalFileList(dateiname);                               // Log Datei Name aus der Liste entfernen und  
+                                                                     // Liste neu aufbauen d.h Lücken schließen
+  
+  require("Storage").open(GLOBAL_FILE_LIST.dateiname,"r").erase();   // GLOBAL_FILE_LIST löschen 
+   
+  if (GLOBAL_FILE_LIST.files.length > 0 )                            // nur speichern, wenn Liste nicht leer ist
+  
+  
+  if ( GLOBAL_FILE_LIST.count > 0)
+  {
+     saveFileList(GLOBAL_FILE_LIST.dateiname);                          // neue Liste Speichern
+  }
+/*  
+  for(var i=0; i<  GLOBAL_FILE_LIST.count ; i++)
+  {
+    console.log(GLOBAL_FILE_LIST.files[i], "\n");                   // zeigt die Liste an
+  }  
+*/
+}
+
 //-----
 
 
-
-
-
-//-----
 function loadFileList(filename) {
     try {
         console.log("=== LADE DATEILISTE OHNE JSON ===");
@@ -652,11 +747,15 @@ var CustomScrollView = {
         Bangle.on('swipe', function(directionLR, directionUD) {
             console.log("=== SWIPE erkannt ===");
             console.log("LR:", directionLR, "UD:", directionUD);
-           if (directionLR === 1) 
+            var busy_flag = false;
+           if ((directionLR === 1) && (busy_flag === false))
            {
             
               if (GLOBAL_FILE_LIST.index > 0)
               {  
+                 
+                 Bangle.setLocked(true);
+                busy_flag = true;
                  GLOBAL_FILE_LIST.index--;
               
                  var logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];               
@@ -673,6 +772,8 @@ var CustomScrollView = {
                  drawCenteredText(GLOBAL_FILE_LIST.index + 1 +"/" + GLOBAL_FILE_LIST.count, 70, 38);
 
                  showLogdatei(logDatei_name);
+                 busy_flag = false;
+                 Bangle.setLocked(false);
                }
           
             }
@@ -688,11 +789,14 @@ var CustomScrollView = {
 */          
             
             // LINKS-NACH-RECHTS  am Ende der Liste = BEENDEN
-            if (directionLR === -1) 
+            if ((directionLR === -1) && (busy_flag === false))
             {
                 console.log("---->Wischen RECHTS-NACH-LINKS ");
                 if (GLOBAL_FILE_LIST.index < GLOBAL_FILE_LIST.count -1 )
                 {
+                   Bangle.setLocked(true);
+                   busy_flag = true;
+                  
                    GLOBAL_FILE_LIST.index ++;
                    var logDatei = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];  
                    console.log("-------->Name :",logDatei);
@@ -708,6 +812,8 @@ var CustomScrollView = {
                    drawCenteredText(GLOBAL_FILE_LIST.index + 1 +"/" + GLOBAL_FILE_LIST.count, 70, 38);
  
                    showLogdatei(logDatei);
+                   busy_flag = false;
+                  Bangle.setLocked(false);
                 }
                 else
                 {
@@ -775,13 +881,64 @@ var CustomScrollView = {
         Bangle.on('touch', function(button, xy) {
             console.log("=== Touch erkannt ===");
             console.log("Y:", xy.y);
-            
+            var busy_flag = false;
             // Ganz unten = zurück
-            if (xy.y > 160) {
+            if (xy.y > 160) 
+            {
                 console.log("Zurück zum Hauptmenue");
-                self.cleanup();
-                showAllLogsWithoutWarnings();
+                //self.cleanup();
+                //showAllLogsWithoutWarnings();
             }
+          else if ((xy.y < 50) && (busy_flag === false))
+          {
+            var logDatei_name;
+            
+            E.showPrompt("Soll die Datei gelöscht werden?").then(function(v) 
+             {
+               if (v) 
+               {
+                  console.log("'Ja' chosen");
+                    // TATSÄCHLICHES Löschen
+            //performActualFileDeletion(GLOBAL_FILE_LIST.dateiname);
+                  
+                 logDatei_loeschen( GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index]);
+                  
+                 if (GLOBAL_FILE_LIST.count > 0)    // sind noch LOG Datein da ??
+                  {
+                    
+                    if (GLOBAL_FILE_LIST.index > GLOBAL_FILE_LIST.count-1)  // für letzte Element korrigieren
+                    {
+                     
+                      GLOBAL_FILE_LIST.index = GLOBAL_FILE_LIST.count-1;
+                      
+                    }
+                    
+                    
+                    
+                    logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];
+                    //console.log("-------->Name :",logDatei_name);
+                    showLogdatei(logDatei_name);
+                    return;
+                  
+                  }
+                 
+                 
+               } 
+               else 
+               {
+                  console.log("'Nein' chosen");     // Zurück zur Anzeige
+                    
+                  logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];
+                  //console.log("-------->Name :",logDatei_name);
+                  showLogdatei(logDatei_name);
+                  return;
+              
+               }
+          });
+            
+            
+          }
+            
         });
     },
 
