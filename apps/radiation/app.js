@@ -294,6 +294,38 @@ var GLOBAL_FILE_LIST = {
 
 //*********************************** Programme *****************************
 
+
+// === DATEINAME HINZUFÜGEN UND GLOBAL_FILE_LIST AKTUALISIEREN ===
+
+function addNewFilenameToList(newFilename) {
+    try {
+        console.log("=== FÜGE NEUEN DATEINAMEN HINZU UND AKTUALISIERE LISTE ===");
+        console.log("Neuer Dateiname:", newFilename);
+        
+        // 1. MIT OPEN im Append-Modus speichern
+        var f = require("Storage").open( GLOBAL_FILE_LIST.dateiname, "a");
+        
+        // 2. NEUEN Dateinamen MIT Zeilenumbruch hinzufügen
+        f.write(newFilename + "\n");
+        console.log("✅ Dateiname im Storage gespeichert!");
+        
+        // 3. GLEICHZEITIG GLOBAL_FILE_LIST aktualisieren
+        GLOBAL_FILE_LIST.files.push(newFilename);  // Ans Ende hängen
+        GLOBAL_FILE_LIST.count++;                  // Zähler erhöhen
+        
+        console.log("✅ GLOBAL_FILE_LIST aktualisiert!");
+        console.log("Neue Anzahl:", GLOBAL_FILE_LIST.count);
+        console.log("Letzter Eintrag:", GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.count - 1]);
+        
+        return true;
+        
+    } catch (e) {
+        console.log("❌ Fehler beim Hinzufügen/Aktualisieren:", e.message);
+        return false;
+    }
+}
+//---
+
 // === DATEILISTE SPEICHERN OHNE JSON ===
 function saveFileList(filename) {
     try {
@@ -364,12 +396,6 @@ function loadFileList(filename) {
 }
 
 
-
-
-
-
-//-----
-
 //------------
 function radiation_file_list(filename) 
 {   
@@ -405,15 +431,67 @@ function radiation_file_list(filename)
         }
 }		
 		
-//---------------------	
+//----------------------------------------------------------------	
+
+
+
+
+// === CHRONOLOGISCHE SORTIERUNG OHNE localeCompare ===
+function sortLogFileListChronologically() {
+    try {
+        console.log("=== CHRONOLOGISCHE SORTIERUNG OHNE localeCompare ===");
+        console.log("Vorher:", GLOBAL_FILE_LIST.files.length, "Dateien");
+        
+        // CHRONOLOGISCHE Sortierung OHNE localeCompare
+        GLOBAL_FILE_LIST.files.sort(function(a, b) {
+            // Datum aus Dateinamen extrahieren und vergleichen
+            var dateA = extractSortableDateFromFilename(a);
+            var dateB = extractSortableDateFromFilename(b);
+            
+            // EINFACHER String-Vergleich (funktioniert bei ISO-Datum!)
+            if (dateA < dateB) return -1;
+            if (dateA > dateB) return 1;
+            return 0;
+        });
+        
+        // Anzahl aktualisieren
+        GLOBAL_FILE_LIST.count = GLOBAL_FILE_LIST.files.length;
+        
+        console.log("✅ Nachher:", GLOBAL_FILE_LIST.count, "Dateien");
+        console.log("Erste:", GLOBAL_FILE_LIST.files[0]);
+        console.log("Letzte:", GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.count - 1]);
+        
+        return true;
+        
+    } catch (e) {
+        console.log("❌ Sortierfehler:", e.message);
+        return false;
+    }
+}
+
+// === DATUM AUS DATEINAMEN EXTRAHIEREN FÜR SORTIERUNG ===
+function extractSortableDateFromFilename(filename) {
+    try {
+        // "RADIATION_2025-09-04.csv" -> "2025-09-04"
+        var datePart = filename.replace("RADIATION_", "").replace(".csv", "");
+        return datePart; // "YYYY-MM-DD" = bereits sortierbar!
+        
+    } catch (e) {
+        return "9999-99-99"; // Fallback - ans Ende
+    }
+}
+
+
+//-----------------------------------------------------------------
+
 
 
 // prüft ob Datein zum anschauen vorhanden sind 
-// === ROUTINE 1: Dateinamen in Liste eintragen (neueste oben) ===
+// === ROUTINE 1: Dateinamen in Liste eintragen (neueste unten) ===
 function populateFileList() {
     try {
         console.log("=== POPULATE FILE LIST ===");
-        
+//15_9        
         // Alle Dateien auflisten
         var allFiles = require("Storage").list();
         var radiationFiles = [];
@@ -443,6 +521,9 @@ function populateFileList() {
         // Globale Liste füllen
         GLOBAL_FILE_LIST.files = radiationFiles;
         GLOBAL_FILE_LIST.count = radiationFiles.length;
+      
+       // CHRONOLOGISCHE Sortierung (älteste zuerst)
+       sortLogFileListChronologically();
         
         console.log("Gefundene Dateien:", GLOBAL_FILE_LIST.count);
         return GLOBAL_FILE_LIST.count;
@@ -791,10 +872,14 @@ var DailyLogger = {
             
             if (fileSize === 0) {
                 
-                GLOBAL_FILE_LIST.count++;                 // die Anzahl der Log Datein wird erhöht!
                 var header = "time,cpm\n";
                 f.write(header + csvLine);
                 console.log("Neue Datei:", filename);
+                
+                return addNewFilenameToList(filename);    //  GLOBAL_FILE_LIST.count wird erhöht ;
+                                                          //  GLOBAL_FILE_LIST.files wird erweitert
+                                                          //  und abgespeichert
+              
             } else {
                 f.write(csvLine);
                 console.log("Geloggt:", csvLine.trim());
@@ -2545,6 +2630,12 @@ g.clear();
 
 //vati
 
+//var test_interval = setInterval(function() {
+//    console.log("===>> START TEST <<===");
+//}, 500);
+
+
+
 
  var startTime = Date.now();
 
@@ -2553,6 +2644,7 @@ g.clear();
 
 var filename =  GLOBAL_FILE_LIST.dateiname;
 
+setTimeout(function() {
  var rueckwert = radiation_file_list(filename);
 		
     if (rueckwert === false)
@@ -2563,6 +2655,10 @@ var filename =  GLOBAL_FILE_LIST.dateiname;
 		{
 		   console.log("Datei erfolgreich wird erzeugt:", filename);
 		}
+}, 1000);
+
+
+
 
 var endTime = Date.now();
 var executionTime = endTime - startTime;
@@ -2570,7 +2666,7 @@ var executionTime = endTime - startTime;
 console.log("--->RADIATION_LIST.txt  Ausführungszeit:", executionTime, "ms");
   
   
-
+// clearInterval( test_interval );
 
 
 
@@ -2907,7 +3003,16 @@ console.log(" ***** Suche Alpha Stick ***** ");
 Scan_Versuche = Max_Anzahl_Scan_Versuche ;
 
 menue_anzeigen("SCAN",GREEN);
+
+
+setTimeout(function() {
+
 startScan(); 
+
+  
+}, 1000);
+
+
 
 
 
