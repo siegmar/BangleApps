@@ -10,11 +10,29 @@
 
 // KOMPLETTE LOG-ANZEIGE - MIT DEINER ORIGINAL-SCROLL-LOGIK
 
+const BLACK  =  '#000000' ;
+const GREEN  =  '#00ff00' ;
+const YELLOW =  '#ffff00' ;
+const RED    =  '#ff0000' ;
+const BLUE   =  '#0000ff' ; 
+const WHITE  =  '#ffffff' ;
+
+
 const  GMZ = 0;
 const  uSv = 1;
 
 var messwert_einheit = GMZ;
+var alert_vorhanden  = false;
 
+// === DATEI-LISTE FÜR NAVIGATION ===
+
+// GLOBALE VARIABLE für Datei-Liste
+var GLOBAL_FILE_LIST = {
+    files: [],                      // Sortierte Dateinamen
+    count: 0,                       // Anzahl Dateien
+    index:0,                        // Index der aktuellen Logdatei
+    dateiname:"RADIATION_LIST.txt"  // hier stehen die Dateinamen der gespeicherten Log Datein
+};
 
 
 
@@ -39,7 +57,7 @@ var GLOBAL_SETTINGS = {
     ALERT_SETTINGS: {
         grenzwert: 35,        // Dein Grenzwert
         rectWidth: 6,         // Rechteck-Breite
-        rectHeight: 6,        // Rechteck-H�he
+        rectHeight: 6,        // Rechteck-Höhe
         rectColor: '#ff0000', // Rot
         posX: 1,              // X-Position (LINKER Rand)
         posY: 5               // Y-Offset (relativ zur Zeile)
@@ -47,6 +65,198 @@ var GLOBAL_SETTINGS = {
 };
 
 //---
+
+
+
+
+// Funktion für horizontal zentrierten Text
+function drawCenteredText(text, yPosition, fontSize) {
+    try {
+        console.log("=== ZENTRIERTE TEXT-POSITIONIERUNG ===");
+        console.log("Text:", text);
+        console.log("Y-Position:", yPosition);
+        console.log("Schriftgröße:", fontSize);
+        
+        // 1. Text-Breite berechnen
+        g.setFont("Vector", fontSize);
+        var textWidth = g.stringWidth(text);
+        console.log("Text-Breite:", textWidth);
+        
+        // 2. Display-Breite (176 Pixel)
+        var displayWidth = 176;
+        console.log("Display-Breite:", displayWidth);
+        
+        // 3. Zentrale X-Position berechnen
+        var centeredX = (displayWidth - textWidth) / 2;
+        console.log("Zentrale X-Position:", centeredX);
+        
+        // 4. Text zentriert zeichnen
+        g.drawString(text, centeredX, yPosition);
+        g.flip();
+        
+        console.log("✅ Text zentriert gezeichnet!");
+        return centeredX; // Rückgabe der X-Position
+        
+    } catch (e) {
+        console.log("❌ Fehler bei Zentrierung:", e.message);
+        return 0;
+    }
+}
+
+//-----
+
+
+
+
+
+//-----
+function loadFileList(filename) {
+    try {
+        console.log("=== LADE DATEILISTE OHNE JSON ===");
+        
+        // MIT OPEN lesen
+        var f = require("Storage").open(filename, "r");
+        var fileSize = f.getLength();
+        
+        if (fileSize === 0) {
+            console.log("❌ Leere Cache-Datei");
+            GLOBAL_FILE_LIST.files = [];
+            GLOBAL_FILE_LIST.count = 0;
+            return false;
+        }
+        
+        var content = f.read(fileSize);
+        if (!content) {
+            console.log("❌ Kein Inhalt");
+            GLOBAL_FILE_LIST.files = [];
+            GLOBAL_FILE_LIST.count = 0;
+            return false;
+        }
+        
+        // ZEILENWEISE aufteilen
+        var lines = content.split('\n').filter(line => line.trim() !== "");
+        
+        // Globale Liste füllen
+        GLOBAL_FILE_LIST.files = lines;
+        GLOBAL_FILE_LIST.count = lines.length;
+        
+        console.log("✅ Dateiliste geladen!");
+        console.log("Anzahl Einträge:", GLOBAL_FILE_LIST.count);
+        return true;
+        
+    } catch (e) {
+        console.log("❌ Fehler beim Laden:", e.message);
+        GLOBAL_FILE_LIST.files = [];
+        GLOBAL_FILE_LIST.count = 0;
+        return false;
+    }
+}
+
+//------------
+
+
+
+
+
+
+
+
+
+
+
+
+// === ROUTINE 1: Dateinamen in Liste eintragen (neueste oben) ===
+function populateFileList() {
+    try {
+        console.log("=== POPULATE FILE LIST ===");
+        
+        // Alle Dateien auflisten
+        var allFiles = require("Storage").list();
+        var radiationFiles = [];
+        
+        // Nur RADIATION_*.csv Dateien sammeln MIT Bereinigung
+        for (var i = 0; i < allFiles.length; i++) {
+            var filename = allFiles[i];
+            if (typeof filename === 'string') {
+                // STEUERZEICHEN BEREINIGEN
+                var cleanName = "";
+                for (var j = 0; j < filename.length; j++) {
+                    var charCode = filename.charCodeAt(j);
+                    if (charCode >= 32 && charCode <= 126) {
+                        cleanName += filename.charAt(j);
+                    }
+                }
+                
+                if (cleanName.startsWith("RADIATION_") && cleanName.endsWith(".csv")) {
+                    radiationFiles.push(cleanName);
+                }
+            }
+        }
+        
+        // Sortieren: neueste zuerst
+        radiationFiles.sort().reverse();
+        
+        // Globale Liste füllen
+        GLOBAL_FILE_LIST.files = radiationFiles;
+        GLOBAL_FILE_LIST.count = radiationFiles.length;
+        
+        console.log("Gefundene Dateien:", GLOBAL_FILE_LIST.count);
+        return GLOBAL_FILE_LIST.count;
+        
+    } catch (e) {
+        console.log("Fehler beim Populate:", e.message);
+        GLOBAL_FILE_LIST.files = [];  // ✅ IN SCOPE!
+        GLOBAL_FILE_LIST.count = 0;   // ✅ IN SCOPE!
+        return 0;
+    }
+}
+
+// === ROUTINE 2: Dateiname durch Index abrufen ===
+function getFilenameByIndex(index) {
+    try {
+        console.log("=== GET FILENAME BY INDEX ===");
+        console.log("Index:", index, "Max:", GLOBAL_FILE_LIST.count - 1);
+        
+        if (index >= 0 && index < GLOBAL_FILE_LIST.count) {
+            var filename = GLOBAL_FILE_LIST.files[index];
+            console.log("Gefundener Dateiname:", filename);
+            return filename;
+        } else {
+            console.log("Index außerhalb Bereich:", index);
+            return null;
+        }
+        
+    } catch (e) {
+        console.log("Fehler beim Get Filename:", e.message);
+        return null;
+    }
+}
+
+// === TEST DER ROUTINEN ===
+function testFileNavigation() {
+    console.log("=== TEST DATEI-NAVIGATION ===");
+    
+    // Liste füllen
+    var fileCount = populateFileList();
+    console.log("Anzahl Dateien:", fileCount);
+    
+    // Erste 3 Dateien anzeigen
+    for (var i = 0; i < Math.min(3, fileCount); i++) {
+        var filename = getFilenameByIndex(i);
+        if (filename) {
+            console.log("Datei " + i + ":", filename);
+        }
+    }
+    
+    // Letzte Datei anzeigen
+    if (fileCount > 0) {
+        var lastFilename = getFilenameByIndex(fileCount - 1);
+        console.log("Letzte Datei:", lastFilename);
+    }
+}
+
+
+
 
 // === HEUTIGE LOG-DATEI PRÜFEN OHNE BEREINIGUNG ===
 function checkTodaysLogFileExists() {
@@ -80,13 +290,6 @@ function checkTodaysLogFileExists() {
 }
 
 //---------------------------------------------------------------------------
-
-
-
-
-
-
-
 
 // === STRING-PARSING FÜR ZEIT UND CPM ===
 
@@ -125,7 +328,40 @@ function extractTimeAndCPM(text) {
 }
 
 
+//---------
+function hasAlertValues(dataLines) {
+    try {
+        // Jede Zeile prüfen
+        for (var i = 0; i < dataLines.length; i++) {
+            var line = dataLines[i];
+            
+            // Zeile parsen
+            var parts = line.split(',');
+            if (parts.length >= 2) {
+                var cpmPart = parts[1].trim();
+                var cpmValue = parseInt(cpmPart) || 0;
+                
+                // Prüfen ob Grenzwert überschritten
+                if (cpmValue > GLOBAL_SETTINGS.ALERT_SETTINGS.grenzwert) {
+                    return true; // SOFORTIGE Rückgabe bei erstem Alert!
+                }
+            }
+        }
+        
+        // Keine Alert-Werte gefunden
+        return false;
+        
+    } catch (e) {
+        // Bei Fehler: Keine Alert-Werte annehmen
+        return false;
+    }
+}
 
+
+
+
+
+//----------
 
 // === CUSTOM SCROLL-VIEW MIT DEINER ORIGINAL-LOGIK UND ALERTS ===
 var CustomScrollView = {
@@ -154,11 +390,11 @@ var CustomScrollView = {
                 type: "data",
                 text: processedLine.text,
                 fontSize: GLOBAL_SETTINGS.FONT_SIZES.messwerte,
-                alert: processedLine.alert      // Alert-Flag hinzugef�gt!
+                alert: processedLine.alert      // Alert-Flag hinzugefügt!
             });
         }
         
-        // LEERZEILEN hinzuf�gen f�r volle Seiten
+        // LEERZEILEN hinzufügen für volle Seiten
         var itemsPerPage = 5; // 5 Datenzeilen pro Seite
         var remainder = this.items.length % itemsPerPage;
         
@@ -172,7 +408,7 @@ var CustomScrollView = {
                     alert: false  // Kein Alert bei Leerzeilen
                 });
             }
-            console.log("Leerzeilen hinzugef�gt:", emptyLinesNeeded);
+            console.log("Leerzeilen hinzugefügt:", emptyLinesNeeded);
         }
         
         console.log("Gesamt Items:", this.items.length);
@@ -190,7 +426,7 @@ var CustomScrollView = {
                 var cpmPart = parts[1].trim();
                 var cpmValue = parseInt(cpmPart) || 0;
                 
-                // Alert pr�fen
+                // Alert prüfen
                 var hasAlert = cpmValue > GLOBAL_SETTINGS.ALERT_SETTINGS.grenzwert;
                 
                 if (timePart && timePart.includes(':')) {
@@ -246,8 +482,24 @@ var CustomScrollView = {
         var progressLine = this.fixedDate + " (" + currentItem + "/" + totalItems + ")";
         
         g.setFont("Vector", GLOBAL_SETTINGS.FONT_SIZES.title);
-        g.drawString(progressLine, 10, 5);
-        
+       
+// vati      
+        g.drawString(progressLine, 10, 5);   // zeichnet die erste Zeile, hier muß das rote Rechteckgesetzt werden
+       
+     // alert_vorhanden = false;
+
+      
+      if (alert_vorhanden === true)
+        {
+         
+          g.setColor(GLOBAL_SETTINGS.ALERT_SETTINGS.rectColor);
+          g.fillRect( 1,8, 1 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectWidth,   // Breite
+                           8 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectHeight); // Höhe
+          g.setColor('#000000');                                           // Zurück zu Schwarz         
+        }
+      
+     
+      
         // Trennlinie
         g.drawLine(0, 25, 176, 25);
         
@@ -400,6 +652,30 @@ var CustomScrollView = {
         Bangle.on('swipe', function(directionLR, directionUD) {
             console.log("=== SWIPE erkannt ===");
             console.log("LR:", directionLR, "UD:", directionUD);
+           if (directionLR === 1) 
+           {
+            
+              if (GLOBAL_FILE_LIST.index > 0)
+              {  
+                 GLOBAL_FILE_LIST.index--;
+              
+                 var logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];               
+                 console.log("-------->Name :",logDatei_name);
+              
+                 g.clear();
+                 
+                 var b = logDatei_name.replace("RADIATION_", "").replace(".csv", "");
+                  
+ 
+                
+                 drawCenteredText(b, 16, 25);
+                
+                 drawCenteredText(GLOBAL_FILE_LIST.index + 1 +"/" + GLOBAL_FILE_LIST.count, 70, 38);
+
+                 showLogdatei(logDatei_name);
+               }
+          
+            }
 /*            
             // LINKS-NACH-RECHTS = BEENDEN
             if (directionLR === 1) {
@@ -411,12 +687,35 @@ var CustomScrollView = {
             
 */          
             
-            // LINKS-NACH-RECHTS = BEENDEN
-            if (directionLR === -1) {
-                console.log("---->Wischen LINKS-NACH-RECHTS = BEENDEN");
-                self.cleanup();
-                showAllLogsWithoutWarnings();
-                return;
+            // LINKS-NACH-RECHTS  am Ende der Liste = BEENDEN
+            if (directionLR === -1) 
+            {
+                console.log("---->Wischen RECHTS-NACH-LINKS ");
+                if (GLOBAL_FILE_LIST.index < GLOBAL_FILE_LIST.count -1 )
+                {
+                   GLOBAL_FILE_LIST.index ++;
+                   var logDatei = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];  
+                   console.log("-------->Name :",logDatei);
+              
+                   g.clear();
+              
+                  
+                   var a = logDatei.replace("RADIATION_", "").replace(".csv", "");
+                  
+                  
+                   drawCenteredText(a , 16, 25);
+ 
+                   drawCenteredText(GLOBAL_FILE_LIST.index + 1 +"/" + GLOBAL_FILE_LIST.count, 70, 38);
+ 
+                   showLogdatei(logDatei);
+                }
+                else
+                {
+                   self.cleanup();
+                   showAllLogsWithoutWarnings();
+                   return;
+                }
+              
             }
             
           
@@ -479,7 +778,7 @@ var CustomScrollView = {
             
             // Ganz unten = zurück
             if (xy.y > 160) {
-                console.log("Zurück zum Hauptmen�");
+                console.log("Zurück zum Hauptmenue");
                 self.cleanup();
                 showAllLogsWithoutWarnings();
             }
@@ -510,7 +809,11 @@ function showLogdatei(logDatei_name) {
             return;
         }
         
-        var content = f.read(fileSize);
+        var content = f.read(fileSize);   // hier wird das gesamte File eingelesen
+      
+// Vati      
+      
+      
         var lines = content.split('\n').filter(line => line.trim() !== "");
         
         if (lines.length === 0) {
@@ -522,7 +825,26 @@ function showLogdatei(logDatei_name) {
         var dataLines = lines.slice(1); // Ohne Header
         var dateTitle = logDatei_name.replace("RADIATION_", "").replace(".csv", "");
         
+//        log(dataLines); //"03:22:29,31",
+                        // "14:33:26,57"    
+       
+       // this.alert_vorhanden = hasAlertValues(dataLines);
+      
+ //       log( "--->Alarme vorhanden : ",this.alert_vorhanden);
+           
+          alert_vorhanden = hasAlertValues(dataLines);
+      
+         console.log( "--->Alarme vorhanden : ",alert_vorhanden);
+      
+      
+      
+      
         CustomScrollView.init(dateTitle, dataLines);
+      
+      
+      
+      
+      
         
     } catch (e) {
         E.showMessage("Fehler: " + e.message, "Lesen");
@@ -562,7 +884,7 @@ setTimeout(function() {
     console.log("=== START ALERTS TEST ===");
     
 //    var logDatei_name = "RADIATION_2025-09-08.csv";
-  
+/*  
    // Heutige Datei prüfen
     var logDatei_name = checkTodaysLogFileExists();
     if (logDatei_name) {
@@ -571,10 +893,47 @@ setTimeout(function() {
         console.log("Heute nicht gefunden");
        logDatei_name = "RADIATION_2025-09-08.csv";
     }
+*/
+      
+// DATEI Liste füllen
+    
+  var startTime = Date.now();
   
-    showLogdatei(logDatei_name);
-}, 1000);
+//   var fileCount = populateFileList();
+    GLOBAL_FILE_LIST.count=0; 
+    
+   var filename =  GLOBAL_FILE_LIST.dateiname;
 
+		var rueckwert = loadFileList(filename);
+    
+      if (rueckwert === false)
+		{
+		   console.log("Datei nicht vorhanden :", filename);
+       
+      showAllLogsWithoutWarnings();  // zurück ins Scanprogramm
+       
+		}
+		else
+		{
+		   console.log("1.Element",GLOBAL_FILE_LIST.files[0] );
+       console.log(filename , "gelesen" ,GLOBAL_FILE_LIST.count , "Elemente");
+		}
+  
+   var endTime = Date.now();
+   var executionTime = endTime - startTime;
+      executionTime = executionTime.toFixed(0);
+      console.log("Ausführungszeit Dateiensuche:",executionTime, "ms");   
+  GLOBAL_FILE_LIST.index = GLOBAL_FILE_LIST.count-1;
+     //console.log("-------->Name :",);
+    logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];  
+   // logDatei_name=GLOBAL_FILE_LIST.files[0];
+     
+  console.log("-------->Name :",logDatei_name);
+  showLogdatei(logDatei_name);
+  
+    
+  
+}, 1000);
 
 
 
