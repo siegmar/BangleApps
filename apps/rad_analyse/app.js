@@ -21,7 +21,8 @@ const WHITE  =  '#ffffff' ;
 const  GMZ = 0;
 const  uSv = 1;
 
-var messwert_einheit = GMZ;
+//var messwert_einheit = GMZ;
+var messwert_einheit = uSv;
 var alert_vorhanden  = false;
 
 // === DATEI-LISTE FÜR NAVIGATION ===
@@ -40,12 +41,13 @@ var GLOBAL_FILE_LIST = {
 var GLOBAL_SETTINGS = {
     GREEN_GRENZWERT: 30,
     YELLOW_GRENZWERT: 50,
+	messwert_einheit: GMZ,
     
     FONT_SIZES: {
         title: 16,
         subtitle: 18,
         header: 18,
-         messwerte:24,
+        messwerte:24,
         info: 14,
         small: 12
     },
@@ -65,6 +67,107 @@ var GLOBAL_SETTINGS = {
 };
 
 //---
+function radiation_settings_abspeichern()
+ {
+    try {
+        console.log("=== ÜBERGEBE PARAMETER ÜBER SETTINGS ===");
+        
+        // Settings speichern
+        var settings = {
+			messwert_einheit: GLOBAL_SETTINGS.messwert_einheit,
+            GREEN_GRENZWERT: GLOBAL_SETTINGS.GREEN_GRENZWERT,
+            YELLOW_GRENZWERT: GLOBAL_SETTINGS.YELLOW_GRENZWERT
+        };
+        
+        require("Storage").write("radiation_settings.json", JSON.stringify(settings));
+        console.log("? Settings gespeichert");
+        
+           } catch (e) {
+        console.log("? Fehler bei Settings:", e.message);
+    }
+}
+
+//-----------
+
+function radiation_setting_laden() {
+    try 
+    {
+        console.log("=== radiation_settings.json ===");
+        
+        var settingsData = require("Storage").read("radiation_settings.json");
+        if (settingsData) 
+		    {
+            var settings = JSON.parse(settingsData);
+            console.log("? Settings empfangen:", settings);
+   
+            GLOBAL_SETTINGS.messwert_einheit = settings.messwert_einheit;
+			      GLOBAL_SETTINGS.GREEN_GRENZWERT  = settings.GREEN_GRENZWERT;
+			      GLOBAL_SETTINGS.YELLOW_GRENZWERT = settings.YELLOW_GRENZWERT;
+			
+			
+            return true;
+        } 
+     } catch (e) 
+	   {
+        console.log("? Settings-Fehler:", e.message);
+     }
+    return false;
+
+}
+
+
+
+
+
+
+//----------------------------------------------------------------------
+
+
+
+// === EXAKTE UMRECHNUNG AUS DEINEN DATEN ===
+var EXACT_CONVERSION = {
+    // LINEARE Regression aus deinen Daten:
+    slope: 0.0065,    // Sehr genau!
+    intercept: 0.0,   // Fast kein Offset!
+    
+    // Umrechnungsfunktion
+    cpmToUSV: function(cpm) {
+        try {
+            // EXAKTE Formel aus deinen Daten:
+            var usv = cpm * 0.0065;
+            return usv;
+            
+        } catch (e) {
+            return 0.0;
+        }
+    },
+    
+    // Umgekehrte Umrechnung
+    usvToCPM: function(usv) {
+        try {
+            // EXAKTE Formel:
+            var cpm = usv / 0.0065;
+            return Math.round(cpm);
+            
+        } catch (e) {
+            return 0;
+        }
+    }
+};
+
+// === INTELLIGENTE UMRECHNUNG FÜR DEINE ANZEIGE ===
+function intelligentConversionForDisplay(cpm) {
+    try {
+        // EXAKTE Umrechnung aus deiner Liste:
+        var usv = cpm * 0.0065;
+//       return usv.toFixed(2).padStart(6, ' '); // 6-stellig mit 2 Nachkommastellen
+        return usv.toFixed(2).padStart(2, ' '); // 2-stellig mit 2 Nachkommastellen
+       
+    } catch (e) {
+        return "0.00";
+    }
+}
+
 
 
 
@@ -606,7 +709,7 @@ var CustomScrollView = {
         //g.drawString("  Zeit  CPM  µSv/h", 10, 35);
       
       
-        if (messwert_einheit === GMZ)
+        if (GLOBAL_SETTINGS.messwert_einheit === GMZ)
         {
           g.drawString("  Zeit     CPM  ", 10, 35);
         }
@@ -632,10 +735,29 @@ var CustomScrollView = {
                 if (item.text !== "") {  // Nur nicht-leere Zeilen anzeigen                 
 //Vati           
 //                console.log(item.text+ "\n");  
-                  
+//18_09                  
                  var result = extractTimeAndCPM(item.text);
 //               console.log("Ergebnis:", JSON.stringify(result));
-                 var cpm  =   result.cpm ;        
+                 var cpm  =   result.cpm ;  
+                
+              //    console.log("G_S.m_einheit:",GLOBAL_SETTINGS.messwert_einheit + "\n"); 
+                  
+                  
+                  
+                
+                  
+                  var uSv_wert;
+            
+                 if (GLOBAL_SETTINGS.messwert_einheit === uSv) 
+                 { 
+                   //uSv_wert = 0.20;
+                   
+                   uSv_wert= intelligentConversionForDisplay(cpm);
+                   
+                 }
+                  
+                  
+                
                  var zeit =   result.time ;                        
                 
                   
@@ -695,9 +817,22 @@ var CustomScrollView = {
                   g.setColor('#ff0000');
                   }
                   
+                  if (GLOBAL_SETTINGS.messwert_einheit === uSv)  
+                  {
+                     
                     
-                  
-                  g.drawString(cpm, x, y);
+                    
+                    x=x-30;
+                    
+                    
+                    
+                    g.drawString(uSv_wert, x, y);
+                  }
+                  else
+                  {
+                    g.drawString(cpm, x, y);
+                  }
+                
                   
                   g.setColor('#000000');
                   
@@ -1036,6 +1171,17 @@ function showAllLogsWithoutWarnings() {
   
 }
 
+
+              
+// console.log("G_S.m_einheit:",GLOBAL_SETTINGS.messwert_einheit + "\n");  
+ radiation_setting_laden();  
+// console.log("G_S.m_einheit:",GLOBAL_SETTINGS.messwert_einheit + "\n"); 
+                  
+ 
+
+
+
+
 // === TEST MIT ALERTS ===
 setTimeout(function() {
     console.log("=== START ALERTS TEST ===");
@@ -1088,7 +1234,9 @@ setTimeout(function() {
   console.log("-------->Name :",logDatei_name);
   showLogdatei(logDatei_name);
   
+                  
     
+  
   
 }, 1000);
 
