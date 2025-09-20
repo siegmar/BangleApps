@@ -22,8 +22,14 @@ const  GMZ = 0;
 const  uSv = 1;
 
 //var messwert_einheit = GMZ;
-var messwert_einheit = uSv;
+//var messwert_einheit = uSv;
 var alert_vorhanden  = false;
+
+var countdown_timer_init = 60;
+
+var countdown_timer =  countdown_timer_init ;   // nach 60 s ohne Aktivität wird die APP abgebrochen 
+                                                // wegen Stromersparnis 
+
 
 // === DATEI-LISTE FÜR NAVIGATION ===
 
@@ -65,8 +71,53 @@ var GLOBAL_SETTINGS = {
         posY: 5               // Y-Offset (relativ zur Zeile)
     }
 };
+//---
+// === ROUTINE ZUM UMKEHREN DER LOG-REIHENFOLGE ===
+function reverseLogContent(content) {
+    try {
+        console.log("=== KEHRE LOG-REIHENFOLGE UM ===");
+        
+        // Inhalt in Zeilen aufteilen
+        var lines = content.split('\n').filter(line => line.trim() !== "");
+        
+        if (lines.length === 0) {
+            console.log("? Leere Log-Datei");
+            return content; // Original zurückgeben
+        }
+        
+        console.log("Gefundene Zeilen:", lines.length);
+        
+        // Header trennen (erste Zeile)
+        var header = lines[0];
+        var dataLines = lines.slice(1);
+        
+        console.log("Datenzeilen:", dataLines.length);
+        
+        // Datenzeilen umkehren (neueste zuerst)
+        dataLines.reverse();
+        
+        // Header + umgekehrte Datenzeilen zusammenfügen
+        var reversedLines = [header].concat(dataLines);
+        
+        // Zurück in einen String
+        var reversedContent = reversedLines.join('\n');
+        
+        console.log("? Log-Reihenfolge umgekehrt!");
+        console.log("Erste Zeile:", reversedLines[1]);  // Neueste Messung
+        console.log("Letzte Zeile:", reversedLines[reversedLines.length - 1]); // Älteste Messung
+        
+        return reversedContent;
+        
+    } catch (e) {
+        console.log("? Fehler beim Umkehren:", e.message);
+        return content; // Bei Fehler Original zurückgeben
+    }
+}
+
 
 //---
+
+
 function radiation_settings_abspeichern()
  {
     try {
@@ -351,14 +402,6 @@ function loadFileList(filename) {
 }
 
 //------------
-
-
-
-
-
-
-
-
 
 
 
@@ -885,7 +928,7 @@ var CustomScrollView = {
             var busy_flag = false;
            if ((directionLR === 1) && (busy_flag === false))
            {
-            
+              countdown_timer =  countdown_timer_init ;
               if (GLOBAL_FILE_LIST.index > 0)
               {  
                  
@@ -926,6 +969,7 @@ var CustomScrollView = {
             // LINKS-NACH-RECHTS  am Ende der Liste = BEENDEN
             if ((directionLR === -1) && (busy_flag === false))
             {
+                countdown_timer =  countdown_timer_init ;
                 console.log("---->Wischen RECHTS-NACH-LINKS ");
                 if (GLOBAL_FILE_LIST.index < GLOBAL_FILE_LIST.count -1 )
                 {
@@ -967,7 +1011,7 @@ var CustomScrollView = {
             // NACH OBEN = seitenweise runter scrollen
             if (directionUD === -1) {
                 console.log("Wischen NACH OBEN = seitenweise runter scrollen");
-                
+                 countdown_timer =  countdown_timer_init ;
                 //var pageSize = self.visibleLines - 1; // Eine Zeile �berlappung
                 //var maxIndex = Math.max(0, self.items.length - self.visibleLines);
                 
@@ -1020,6 +1064,7 @@ var CustomScrollView = {
             // Ganz unten = zurück
             if (xy.y > 160) 
             {
+                countdown_timer =  countdown_timer_init ;
                 console.log("Zurück zum Hauptmenue");
                 //self.cleanup();
                 //showAllLogsWithoutWarnings();
@@ -1027,7 +1072,7 @@ var CustomScrollView = {
           else if ((xy.y < 50) && (busy_flag === false))
           {
             var logDatei_name;
-            
+            countdown_timer =  countdown_timer_init ;
             E.showPrompt("Soll die Datei gelöscht werden?").then(function(v) 
              {
                if (v) 
@@ -1103,6 +1148,21 @@ function showLogdatei(logDatei_name) {
         
         var content = f.read(fileSize);   // hier wird das gesamte File eingelesen
       
+      
+       if ( GLOBAL_FILE_LIST.index === GLOBAL_FILE_LIST.count-1)  // ist es die neuste Datei, dann Reihenfolge umkehren
+       {
+      
+      
+//20_09      
+// === NEU: Log-Reihenfolge umkehren ===
+      
+        content = reverseLogContent(content);
+
+//-------------      
+       }
+      
+      
+      
 // Vati      
       
       
@@ -1128,9 +1188,12 @@ function showLogdatei(logDatei_name) {
       
          console.log( "--->Alarme vorhanden : ",alert_vorhanden);
       
+//20_09  
       
       
-      
+        //console.log( "---------------------");
+        //console.log( dataLines); 
+        //console.log( "---------------------");  
         CustomScrollView.init(dateTitle, dataLines);
       
       
@@ -1178,6 +1241,21 @@ function showAllLogsWithoutWarnings() {
 // console.log("G_S.m_einheit:",GLOBAL_SETTINGS.messwert_einheit + "\n"); 
                   
  
+var Timer_1 = setInterval(function() 
+          {
+            
+            if ( countdown_timer > 0)
+            {
+               countdown_timer--;
+            }
+            else
+            {
+               showAllLogsWithoutWarnings();   // App wird verlassen und in die Scan App gesprungen
+            }
+              //console.log("countdown_timer:",countdown_timer);
+  
+          }, 1000);
+
 
 
 

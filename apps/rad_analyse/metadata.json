@@ -2,7 +2,7 @@
   "id": "rad_analyse",
   "name": "Radiation Analysis",
   "shortName":"rad_ana",
-  "version": "0.10.0",
+  "version": "0.20.0",
   "description": "A detailed description of my great app",
   "icon": "rad_analyse.png",
   "type": "app",
