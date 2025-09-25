@@ -29,7 +29,7 @@ var countdown_timer_init = 60;
 
 var countdown_timer =  countdown_timer_init ;   // nach 60 s ohne Aktivität wird die APP abgebrochen 
                                                 // wegen Stromersparnis 
-
+var button_click_zaehler = 0;
 
 // === DATEI-LISTE FÜR NAVIGATION ===
 
@@ -728,7 +728,7 @@ var CustomScrollView = {
         g.drawString(progressLine, 10, 5);   // zeichnet die erste Zeile, hier muß das rote Rechteckgesetzt werden
        
      // alert_vorhanden = false;
-
+/*
       
       if (alert_vorhanden === true)
         {
@@ -738,12 +738,28 @@ var CustomScrollView = {
                            8 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectHeight); // Höhe
           g.setColor('#000000');                                           // Zurück zu Schwarz         
         }
+*/ 
       
-     
+//---      
+         
+      if (alert_vorhanden === true)
+        {
+           g.setColor(RED); 
       
-        // Trennlinie
-        g.drawLine(0, 25, 176, 25);
-        
+        }
+        else
+        {
+            g.setColor(BLACK); 
+        }
+          
+
+          g.drawLine(0, 25, 176, 25);     // Trennlinie  
+          g.drawLine(0, 25+1, 176, 25+1);     // Trennlinie  
+          
+          g.setColor(BLACK); 
+      
+//---      
+      
         // Überschrift
         g.setFont("Vector", GLOBAL_SETTINGS.FONT_SIZES.header);
         
@@ -1257,9 +1273,76 @@ var Timer_1 = setInterval(function()
           }, 1000);
 
 
+//------
+
+setWatch(function(f) {
+   
+  button_click_zaehler ++;
+  
+  console.log("Pressed");
+  
+    
+  if (button_click_zaehler ===1 )
+  {
+    Bangle.setOptions({btnLoadTimeout : 3000});
+    Bangle.setLCDBrightness(1);
+  }
+  else
+  {
+  
+    Bangle.setOptions({btnLoadTimeout : 3000});
+    Bangle.setLCDBrightness(0);
+    button_click_zaehler = 0; 
+  }
+  
+
+  
+}, BTN, {edge:"rising", debounce:50, repeat:true});
+//-----------------------------------------------------
 
 
 
+
+
+
+
+
+//-------
+
+// Bessere Lösung mit backlight Event
+Bangle.on('lock', function(isLocked) {
+    if (!isLocked) {
+        console.log(" *** LOCK OFF *** ");
+        // Beim Entsperren 
+      
+        Bangle.setLCDBrightness(0);
+       g.setColor(WHITE);
+       g.fillRect( 1,8, 1 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectWidth,   // Breite
+                        8 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectHeight); // Höhe
+
+ 
+    } else {
+        console.log(" *** LOCK ON *** ");
+        // Beim Sperren
+        g.setColor(BLACK);
+        g.fillRect( 1,8, 1 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectWidth,   // Breite
+                         8 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectHeight); // Höhe
+
+    }
+});
+
+// Backlight Event für Display-Änderungen
+Bangle.on('backlight', function(backlightOn) {
+    console.log("Backlight:", backlightOn);
+    // Kurze Verzögerung für Widget-Stabilisierung
+});
+
+
+//------
+  
+
+
+//-------
 // === TEST MIT ALERTS ===
 setTimeout(function() {
     console.log("=== START ALERTS TEST ===");
@@ -1275,7 +1358,21 @@ setTimeout(function() {
        logDatei_name = "RADIATION_2025-09-08.csv";
     }
 */
-      
+     
+  
+   console.log("HIER BIN ICH");
+   Bangle.setOptions({wakeOnBTN1 : true});
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 // DATEI Liste füllen
     
   var startTime = Date.now();
