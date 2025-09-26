@@ -338,13 +338,16 @@ var GLOBAL_FILE_LIST = {
 function radiation_settings_abspeichern()
  {
     try {
-        console.log("=== �BERGEBE PARAMETER �BER SETTINGS ===");
+        console.log("=== UEBERGEBE PARAMETER UEBER SETTINGS ===");
         
         // Settings speichern
         var settings = {
-			messwert_einheit: GLOBAL_SETTINGS.messwert_einheit,
-            GREEN_GRENZWERT: GLOBAL_SETTINGS.GREEN_GRENZWERT,
-            YELLOW_GRENZWERT: GLOBAL_SETTINGS.YELLOW_GRENZWERT
+			      messwert_einheit : GLOBAL_SETTINGS.messwert_einheit,
+            GREEN_GRENZWERT  : GLOBAL_SETTINGS.GREEN_GRENZWERT,
+            YELLOW_GRENZWERT : GLOBAL_SETTINGS.YELLOW_GRENZWERT,
+            warte_linie      :  GLOBAL_SETTINGS.warte_linie , 
+            keine_grenzwerte :  GLOBAL_SETTINGS.keine_grenzwerte
+                  
         };
         
         require("Storage").write("radiation_settings.json", JSON.stringify(settings));
@@ -381,7 +384,9 @@ function radiation_setting_laden() {
           
 			      GLOBAL_SETTINGS.GREEN_GRENZWERT  = settings.GREEN_GRENZWERT;
 			      GLOBAL_SETTINGS.YELLOW_GRENZWERT = settings.YELLOW_GRENZWERT;
-			
+			      GLOBAL_SETTINGS.warte_linie      = settings.warte_linie;
+            GLOBAL_SETTINGS.keine_grenzwerte = settings.keine_grenzwerte;
+                     
 			
             return true;
         } 
@@ -2961,7 +2966,12 @@ Bangle.drawWidgets();      //
 
 Bangle.setOptions({wakeOnBTN1 : true});
 
+Bangle.setLCDBrightness(0);
+
 betriebsmodus = GMZ_GROSS ;
+
+
+
 
 //betriebsmodus = SERVICE;
 //vati
