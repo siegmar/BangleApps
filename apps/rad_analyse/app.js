@@ -1362,7 +1362,7 @@ setTimeout(function() {
   
    console.log("HIER BIN ICH");
    Bangle.setOptions({wakeOnBTN1 : true});
-
+   Bangle.setLCDBrightness(0);
   
   
   
