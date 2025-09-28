@@ -2,7 +2,7 @@
   "id": "radiation",
   "name": "Radiation Sensor",
   "shortName":"RAD",
-  "version": "0.60.0",
+  "version": "0.70.0",
   "description": "A detailed description of my great app",
   "icon": "radiation.png",
   "type": "app",
@@ -14,3 +14,4 @@
     {"name":"radiation.img","url":"app-icon.js","evaluate":true}
 	]
 } 
+
