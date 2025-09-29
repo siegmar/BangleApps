@@ -63,7 +63,7 @@ var GLOBAL_SETTINGS = {
     
     // ALERT-EINSTELLUNGEN - VOLL KONFIGURIERBAR!
     ALERT_SETTINGS: {
-        grenzwert: 35,        // Dein Grenzwert
+        grenzwert: 135,        // Dein Grenzwert
         rectWidth: 6,         // Rechteck-Breite
         rectHeight: 6,        // Rechteck-Höhe
         rectColor: '#ff0000', // Rot
@@ -603,7 +603,7 @@ function hasAlertValues(dataLines) {
 
 
 //----------
-
+//29_09
 // === CUSTOM SCROLL-VIEW MIT DEINER ORIGINAL-LOGIK UND ALERTS ===
 var CustomScrollView = {
     items: [],
@@ -628,10 +628,10 @@ var CustomScrollView = {
         for (var i = 0; i < dataLines.length; i++) {
             var processedLine = this.processLineWithAlert(dataLines[i]);
             this.items.push({
-                type: "data",
-                text: processedLine.text,
-                fontSize: GLOBAL_SETTINGS.FONT_SIZES.messwerte,
-                alert: processedLine.alert      // Alert-Flag hinzugefügt!
+                //type: "data",
+                t: processedLine.text
+                //fontSize: GLOBAL_SETTINGS.FONT_SIZES.messwerte,
+                //alert: processedLine.alert      // Alert-Flag hinzugefügt!
             });
         }
         
@@ -643,10 +643,10 @@ var CustomScrollView = {
             var emptyLinesNeeded = itemsPerPage - remainder;
             for (var j = 0; j < emptyLinesNeeded; j++) {
                 this.items.push({
-                    type: "empty",
-                    text: "",  // Leere Zeile
-                    fontSize: GLOBAL_SETTINGS.FONT_SIZES.small,
-                    alert: false  // Kein Alert bei Leerzeilen
+                    //type: "empty",
+                    t: ""  // Leere Zeile
+                    //fontSize: GLOBAL_SETTINGS.FONT_SIZES.small,
+                    //alert: false  // Kein Alert bei Leerzeilen
                 });
             }
             console.log("Leerzeilen hinzugefügt:", emptyLinesNeeded);
@@ -790,12 +790,16 @@ var CustomScrollView = {
                 var item = this.items[itemIndex];
                 var y = startY + (i * GLOBAL_SETTINGS.LINE_SPACING);
                 
-                g.setFont("Vector", item.fontSize);
-                if (item.text !== "") {  // Nur nicht-leere Zeilen anzeigen                 
+                //g.setFont("Vector", item.fontSize);
+				
+				g.setFont("Vector", GLOBAL_SETTINGS.FONT_SIZES.messwerte);
+				
+				
+                if (item.t !== "") {  // Nur nicht-leere Zeilen anzeigen                 
 //Vati           
-//                console.log(item.text+ "\n");  
+//                console.log(item.t+ "\n");  
 //18_09                  
-                 var result = extractTimeAndCPM(item.text);
+                 var result = extractTimeAndCPM(item.t);
 //               console.log("Ergebnis:", JSON.stringify(result));
                  var cpm  =   result.cpm ;  
                 
@@ -896,13 +900,13 @@ var CustomScrollView = {
                   g.setColor('#000000');
                   
                   
-//                g.drawString(item.text, 10, y);
+//                g.drawString(item.t, 10, y);
                
                   //g.drawString(zeile, 10, y);
                  
 //                  console.log(zeile + "\n");  
                   
-             //    console.log(item.text+ "\n");                 
+             //    console.log(item.t+ "\n");                 
                
                   
                 }
@@ -1178,19 +1182,19 @@ function showLogdatei(logDatei_name) {
        }
       
       
+         var dataLines = content.split('\n').filter(line => line.trim() !== "").slice(1);  // OHNE Header + Zwischenvariable!
+     
       
-// Vati      
       
-      
-        var lines = content.split('\n').filter(line => line.trim() !== "");
+       // var lines = content.split('\n').filter(line => line.trim() !== "");
         
-        if (lines.length === 0) {
+        if (dataLines.length === 0) {
             E.showMessage("Keine Daten", "Inhalt");
             setTimeout(showAllLogsWithoutWarnings, 2000);
             return;
         }
         
-        var dataLines = lines.slice(1); // Ohne Header
+  //      var dataLines = lines.slice(1); // Ohne Header
         var dateTitle = logDatei_name.replace("RADIATION_", "").replace(".csv", "");
         
 //        log(dataLines); //"03:22:29,31",
@@ -1207,12 +1211,42 @@ function showLogdatei(logDatei_name) {
 //20_09  
       
       
-        //console.log( "---------------------");
-        //console.log( dataLines); 
-        //console.log( "---------------------");  
+        console.log( "---------------------");
+ //       console.log( dataLines); 
+//      console.log( lines); 
+/*    so sieht die Liste aus  
+      [
+  "17:21,18",
+  "17:20,15",
+  "17:19,12",
+  "17:18,14",
+  "17:17,17",
+  "17:16,19",
+  "17:15,16",
+  "17:14,21",
+  "17:13,17",
+*/      
+      
+      
+      
+      
+      
+        console.log( "---------------------");  
+        
+      
+      
+      
+      
+      
+      
+      
         CustomScrollView.init(dateTitle, dataLines);
       
       
+// 5. VARIABLEN FREIGEBEN
+
+        content = null;
+        dataLines = null;
       
       
       
@@ -1362,16 +1396,12 @@ setTimeout(function() {
   
    console.log("HIER BIN ICH");
    Bangle.setOptions({wakeOnBTN1 : true});
+
    Bangle.setLCDBrightness(0);
   
   
   
-  
-  
-  
-  
-  
-  
+
   
 // DATEI Liste füllen
     
