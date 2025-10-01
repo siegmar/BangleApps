@@ -31,6 +31,12 @@ var countdown_timer =  countdown_timer_init ;   // nach 60 s ohne Aktivität wir
                                                 // wegen Stromersparnis 
 var button_click_zaehler = 0;
 
+var content;    // enthält csv Datei mit Header
+
+var gespeicherte_messwerte = [];
+
+
+
 // === DATEI-LISTE FÜR NAVIGATION ===
 
 // GLOBALE VARIABLE für Datei-Liste
@@ -63,7 +69,7 @@ var GLOBAL_SETTINGS = {
     
     // ALERT-EINSTELLUNGEN - VOLL KONFIGURIERBAR!
     ALERT_SETTINGS: {
-        grenzwert: 135,        // Dein Grenzwert
+        grenzwert: 35,       // Dein Grenzwert
         rectWidth: 6,         // Rechteck-Breite
         rectHeight: 6,        // Rechteck-Höhe
         rectColor: '#ff0000', // Rot
@@ -568,6 +574,34 @@ function extractTimeAndCPM(text) {
     };
 }
 
+//------------------------
+
+function hasAlertValues_neu(dataLines) {
+    try {
+        // Jede Zeile prüfen
+        for (var i = 0; i < dataLines.length; i++) {
+          
+          var line = dataLines[i];  
+          var cpmPart = dataLines[i].slice(6);
+          var cpmValue = parseInt(cpmPart) || 0;
+          
+          if (cpmValue > GLOBAL_SETTINGS.ALERT_SETTINGS.grenzwert) 
+          {
+            return true; // SOFORTIGE Rückgabe bei erstem Alert!
+          }
+
+        }
+        
+        // Keine Alert-Werte gefunden
+        return false;
+        
+    } catch (e) {
+        // Bei Fehler: Keine Alert-Werte annehmen
+        return false;
+    }
+}
+
+
 
 //---------
 function hasAlertValues(dataLines) {
@@ -598,11 +632,611 @@ function hasAlertValues(dataLines) {
     }
 }
 
+//----------------------------------------------------------
 
+var CustomScrollView_neu = {
+    items: [],
+    currentIndex: 0,
+    fontSize: 24,
+    lineHeight: 24,
+    visibleLines: 7,
+    startY: 0,
+    fixedDate: "",
+    measurementCount: 0,
+    
+    // Initialisierung
+    init: function(title, dataLines) {
+        console.log("neu === DEINE ORIGINAL-LOGIK Init ===");
+        
+        this.items = [];
+        this.currentIndex = 0;
+        this.fixedDate = title;
+        this.measurementCount = dataLines.length;
+        
+      
+//       var startTime = Date.now();
+      
+// dauert 9,56 s       
+/*        
+      // Datenzeilen MIT Alerts
+        for (var i = 0; i < dataLines.length; i++) {
+            var processedLine = this.processLineWithAlert(dataLines[i]);
+            this.items.push({
+                //type: "data",
+                t: processedLine.text
+                //fontSize: GLOBAL_SETTINGS.FONT_SIZES.messwerte,
+                //alert: processedLine.alert      // Alert-Flag hinzugefügt!
+            });
+        }
+*/        
+      
+/*      
+       var endTime = Date.now();
+       var executionTime = endTime - startTime;
+      executionTime = executionTime.toFixed(0);
+      console.log("++++++++++this.items.push(",executionTime, "ms");   
+*/      
+      
+      
+        // LEERZEILEN hinzufügen für volle Seiten
+        var itemsPerPage = 5; // 5 Datenzeilen pro Seite
+        var remainder = dataLines.length % itemsPerPage;
+        
+        if (remainder !== 0) {
+            var emptyLinesNeeded = itemsPerPage - remainder;
+            for (var j = 0; j < emptyLinesNeeded; j++) {
+              
+              dataLines.push("");   // Leerzeilen anhängen
+            /*
+                this.items.push({
+                    //type: "empty",
+                    t: ""  // Leere Zeile
+                    //fontSize: GLOBAL_SETTINGS.FONT_SIZES.small,
+                    //alert: false  // Kein Alert bei Leerzeilen
+                });
+            */
+            }
+            console.log("neu Leerzeilen hinzugefügt:", emptyLinesNeeded);
+        }
+        
+        console.log("neu Gesamt Items:", dataLines.length);
+        
+        this.display(dataLines);
+      
+      
+//      console.log(this.items);
+      
+      
+      
+        this.setupSwipeScrolling(dataLines);
+    },
+    
+    // LINIE MIT Alert-Information verarbeiten
+    processLineWithAlert: function(line) {
+        try {
+            var parts = line.split(',');
+            
+            if (parts.length >= 2) {
+                var timePart = parts[0].trim();
+                var cpmPart = parts[1].trim();
+                var cpmValue = parseInt(cpmPart) || 0;
+                
+                // Alert prüfen
+                var hasAlert = cpmValue > GLOBAL_SETTINGS.ALERT_SETTINGS.grenzwert;
+                
+                if (timePart && timePart.includes(':')) {
+                    var timeComponents = timePart.split(':');
+                    
+                    // HH:MM:SS -> HH:MM
+                    if (timeComponents.length === 3) {
+                        var timeWithoutSeconds = timeComponents[0] + ":" + timeComponents[1];
+                        return {
+                            text: timeWithoutSeconds + "   " + cpmPart,
+                            alert: hasAlert  // Alert-Flag setzen
+                        };
+                    }
+                    // HH:MM -> bleibt
+                    else if (timeComponents.length === 2) {
+                        return {
+                            text: timePart + "   " + cpmPart,
+                            alert: hasAlert  // Alert-Flag setzen
+                        };
+                    }
+                    // Andere -> Standard
+                    else {
+                        return {
+                            text: timePart + "   " + cpmPart,
+                            alert: hasAlert  // Alert-Flag setzen
+                        };
+                    }
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+        
+        return {
+            text: line,
+            alert: false  // Kein Alert bei Fehler
+        };
+    },
+    
+    // Anzeige MIT Alerts
+    display: function(dataLines) {
+        console.log("neu === DEINE ORIGINAL-ANZEIGE MIT ALERTS ===");
+        console.log("neu Aktueller Index:", this.currentIndex);
+        
+        g.clear();
+        g.setColor('#ffffff');
+        g.fillRect(0, 0, 176, 176);
+        g.setColor('#000000');
+        
+        // ERSTE ZEILE: Datum + Fortschritt
+        var totalItems = this.measurementCount;
+        var currentItem = this.currentIndex + 1;
+        var progressLine = this.fixedDate + " (" + currentItem + "/" + totalItems + ")";
+        
+        g.setFont("Vector", GLOBAL_SETTINGS.FONT_SIZES.title);
+       
+// vati      
+        g.drawString(progressLine, 10, 5);   // zeichnet die erste Zeile, hier muß das rote Rechteckgesetzt werden
+       
+     // alert_vorhanden = false;
+/*
+      
+      if (alert_vorhanden === true)
+        {
+         
+          g.setColor(GLOBAL_SETTINGS.ALERT_SETTINGS.rectColor);
+          g.fillRect( 1,8, 1 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectWidth,   // Breite
+                           8 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectHeight); // Höhe
+          g.setColor('#000000');                                           // Zurück zu Schwarz         
+        }
+*/ 
+      
+//---      
+         
+      if (alert_vorhanden === true)
+        {
+           g.setColor(RED); 
+      
+        }
+        else
+        {
+            g.setColor(BLACK); 
+        }
+          
 
+          g.drawLine(0, 25, 176, 25);     // Trennlinie  
+          g.drawLine(0, 25+1, 176, 25+1);     // Trennlinie  
+          
+          g.setColor(BLACK); 
+      
+//---      
+      
+        // Überschrift
+        g.setFont("Vector", GLOBAL_SETTINGS.FONT_SIZES.header);
+        
+      
+      
+        //g.drawString("  Zeit  CPM  µSv/h", 10, 35);
+      
+      
+        if (GLOBAL_SETTINGS.messwert_einheit === GMZ)
+        {
+          g.drawString("  Zeit     CPM  ", 10, 35);
+        }
+        else
+        {
+          g.drawString("  Zeit    µSv/h", 10, 35);
+        }
+       
+      
+      
+        // DATENZEILEN MIT Alerts
+        var startY = 60;
+        var itemsPerPage = 5; // 5 Zeilen pro Seite
+        console.log("neu Zeige", itemsPerPage, "Zeilen");
+        
+        for (var i = 0; i < itemsPerPage; i++) {
+            var itemIndex = this.currentIndex + i;
+            if (itemIndex < dataLines.length) {
+                var item =  dataLines [itemIndex];
+               
+   //           console.log(item);
+   //           console.log(content[1],content[2],content[3],content[4]);
+              
+              
+              
+              
+                var y = startY + (i * GLOBAL_SETTINGS.LINE_SPACING);
+                
+                //g.setFont("Vector", item.fontSize);
+				
+				g.setFont("Vector", GLOBAL_SETTINGS.FONT_SIZES.messwerte);
+				
+				
+                if (item !== "") {  // Nur nicht-leere Zeilen anzeigen                 
+         
+//                console.log(item.t+ "\n");  
+//01_10                 
+               //  var result = extractTimeAndCPM(item.t);
+//               console.log("Ergebnis:", JSON.stringify(result));
+                 //var cpm  =   result.cpm ;  
+                
+              //    console.log("G_S.m_einheit:",GLOBAL_SETTINGS.messwert_einheit + "\n"); 
+                  
+                 
+               var zeit = item.slice(0,5);
+               
+               var cpmStr = item .slice(6);
+               var cpm = parseInt(cpmStr) || 0;
+                  
+                  
+               console.log("neu",zeit ," ",cpm);                     
+                  
+                  
+                  var uSv_wert;
+            
+                 if (GLOBAL_SETTINGS.messwert_einheit === uSv) 
+                 { 
+                   //uSv_wert = 0.20;
+                   
+                   
+                   
+                   uSv_wert= intelligentConversionForDisplay(cpm);
+                   
+                 }
+                  
+                  
+                
+//                 var zeit =   result.time ;                        
+                
+                  
+                var x=10;
+                
+               g.drawString(zeit, x, y);
+                  
+                  x = 140;
+    
+//********************* TEST Formatierung testen ***********************                  
+                  
+                  
+/*                  
+                  
+                if (i===1)
+                {
+                
+                  cpm=999;
+                }
+                 
+                  if (i===2)
+                {
+                
+                  cpm=9999;
+                }
+                 
+                  if (i===4)
+                {
+                
+                  cpm=99999;
+                }
+                  
+*/                  
+                  
+                 var zeile = zeit+"    "+cpm;   // 2 stellige Anzeige
+                 
+                 if (cpm > 99 && cpm < 1000)
+                 {
+                   x= x- 16;
+                   zeile = zeit+"   "+cpm;     // 3 stellige Anzeige
+                 }
+                 else if (cpm > 999 && cpm < 10000)
+                 {
+                    x= x-32;
+                    zeile = zeit+"  "+cpm;     // 4 stellige Anzeige
+             
+                 }
+                 else if ( cpm>9999 && cpm < 100000)
+                 {
+                   x=x-45;
+                 
+                 }
+                  
+                  if (cpm >35)
+                  {
+                  
+                  g.setColor('#ff0000');
+                  }
+                  
+                  if (GLOBAL_SETTINGS.messwert_einheit === uSv)  
+                  {
+                     
+                    
+                    
+                    x=x-30;
+                    
+                    
+                    
+                    g.drawString(uSv_wert, x, y);
+                  }
+                  else
+                  {
+                    g.drawString(cpm, x, y);
+                  }
+                
+                  
+                  g.setColor('#000000');
+                  
+                  
+//                g.drawString(item.t, 10, y);
+               
+                  //g.drawString(zeile, 10, y);
+                 
+//                  console.log(zeile + "\n");  
+                  
+             //    console.log(item.t+ "\n");                 
+               
+                  
+                }
+                
+                // ALERT-RECHTECK zeichnen wenn nötig
+/*
+                if (item.alert === true) {
+                    g.setColor(GLOBAL_SETTINGS.ALERT_SETTINGS.rectColor);
+                    
+                    // KONFIGURIERBARE Position:
+                    var rectX = GLOBAL_SETTINGS.ALERT_SETTINGS.posX;  // LINKER Rand
+                    var rectY = y + GLOBAL_SETTINGS.ALERT_SETTINGS.posY; // Mitte der Zeile
+                    
+                    g.fillRect(
+                        rectX, 
+                        rectY,
+                        rectX + GLOBAL_SETTINGS.ALERT_SETTINGS.rectWidth,   // Breite
+                        rectY + GLOBAL_SETTINGS.ALERT_SETTINGS.rectHeight   // Höhe
+                    );
+                    g.setColor('#000000'); // Zurück zu Schwarz
+                }
+*/              
+              
+              
+            }
+        }
+        
+        g.flip();
+    },
+    
+    // DEINE ORIGINAL SCROLLING-LOGIK - UNVERÄNDERT!
+    setupSwipeScrolling: function(dataLines) {
+        console.log("=== Setup DEINE ORIGINAL SCROLLING-LOGIK ===");
+        
+        Bangle.removeAllListeners('swipe');
+        Bangle.removeAllListeners('touch');
+        
+        var self = this;
+        
+        Bangle.on('swipe', function(directionLR, directionUD) {
+            console.log("neu === SWIPE erkannt ===");
+            console.log("LR:", directionLR, "UD:", directionUD);
+            var busy_flag = false;
+           if ((directionLR === 1) && (busy_flag === false))
+           {
+              countdown_timer =  countdown_timer_init ;
+              if (GLOBAL_FILE_LIST.index > 0)
+              {  
+                 
+                 Bangle.setLocked(true);
+                busy_flag = true;
+                 GLOBAL_FILE_LIST.index--;
+              
+                 var logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];               
+                 console.log("neuu-------->Name :",logDatei_name);
+              
+                 g.clear();
+                 
+                 var b = logDatei_name.replace("RADIATION_", "").replace(".csv", "");
+                  
+ 
+                
+                 drawCenteredText(b, 16, 25);
+                
+                 drawCenteredText(GLOBAL_FILE_LIST.index + 1 +"/" + GLOBAL_FILE_LIST.count, 70, 38);
 
+                 showLogdatei_neu(logDatei_name);
+                 busy_flag = false;
+                 Bangle.setLocked(false);
+               }
+          
+            }
+/*            
+            // LINKS-NACH-RECHTS = BEENDEN
+            if (directionLR === 1) {
+                console.log("Wischen LINKS-NACH-RECHTS = BEENDEN");
+              //  self.cleanup();
+              //  showAllLogsWithoutWarnings();
+                return;
+            }
+            
+*/          
+            
+            // LINKS-NACH-RECHTS  am Ende der Liste = BEENDEN
+            if ((directionLR === -1) && (busy_flag === false))
+            {
+                countdown_timer =  countdown_timer_init ;
+                console.log("neu ---->Wischen RECHTS-NACH-LINKS ");
+                if (GLOBAL_FILE_LIST.index < GLOBAL_FILE_LIST.count -1 )
+                {
+                   Bangle.setLocked(true);
+                   busy_flag = true;
+                  
+                   GLOBAL_FILE_LIST.index ++;
+                   var logDatei = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];  
+                   console.log("neu -------->Name :",logDatei);
+              
+                   g.clear();
+              
+                  
+                   var a = logDatei.replace("RADIATION_", "").replace(".csv", "");
+                  
+                  
+                   drawCenteredText(a , 16, 25);
+ 
+                   drawCenteredText(GLOBAL_FILE_LIST.index + 1 +"/" + GLOBAL_FILE_LIST.count, 70, 38);
+ 
+                   showLogdatei_neu(logDatei);
+                   busy_flag = false;
+                  Bangle.setLocked(false);
+                }
+                else
+                {
+                   self.cleanup();
+                   showAllLogsWithoutWarnings();
+                   return;
+                }
+              
+            }
+            
+          
+          
+          
+          
+          
+            // NACH OBEN = seitenweise runter scrollen
+            if (directionUD === -1) {
+                console.log("neu Wischen NACH OBEN = seitenweise runter scrollen");
+                 countdown_timer =  countdown_timer_init ;
+                //var pageSize = self.visibleLines - 1; // Eine Zeile �berlappung
+                //var maxIndex = Math.max(0, self.items.length - self.visibleLines);
+                
+                //var newIndex = self.currentIndex + pageSize;
+                
+				        var itemsPerPage = 5; // 5 Zeilen pro Seite
+//                var maxIndex = Math.max(0, self.items.length - itemsPerPage);
+                
+                         
+                  console.log("neu--------------HIER");
+                
+              var maxIndex = Math.max(0, dataLines.length - itemsPerPage);
+           
+                  console.log("neu dataLines.length:", dataLines.length);
+              
+              
+                var newIndex = self.currentIndex + itemsPerPage;
 
-//----------
+				if (newIndex <= maxIndex) {
+                    self.currentIndex = newIndex;
+                    console.log("Neuer Index:", self.currentIndex);
+                    self.display(dataLines);
+                } else {
+                    // Letzte Seite
+                    self.currentIndex = maxIndex;
+                    console.log("Letzte Seite:", self.currentIndex);
+                    self.display(dataLines);
+                   
+                  
+                }
+            }
+            // NACH UNTEN = seitenweise hoch scrollen (DEINE LOGIK!)
+            else if (directionUD === 1) {
+                console.log("Wischen NACH UNTEN = seitenweise hoch scrollen");
+                
+                //var pageSize = self.visibleLines - 1; // Eine Zeile �berlappung
+                
+                //var newIndex = self.currentIndex - pageSize;  // DEINE Logik!
+				
+				          var itemsPerPage = 5; // 5 Zeilen pro Seite
+                  var newIndex = self.currentIndex - itemsPerPage;
+				 
+                if (newIndex >= 0) {
+                    self.currentIndex = newIndex;
+                    console.log("neu Neuer Index:", self.currentIndex);
+                    self.display(dataLines);
+                } else {
+                    // Erste Seite - DEINE Logik!
+                    self.currentIndex = 0;
+                    console.log("neu Erste Seite:", self.currentIndex);
+                    self.display(dataLines);
+                }
+            }
+        });
+        
+        // TOUCH für Zurück
+        Bangle.on('touch', function(button, xy) {
+            console.log("=== Touch erkannt ===");
+            console.log("Y:", xy.y);
+            var busy_flag = false;
+            // Ganz unten = zurück
+            if (xy.y > 160) 
+            {
+                countdown_timer =  countdown_timer_init ;
+                console.log("Zurück zum Hauptmenue");
+                //self.cleanup();
+                //showAllLogsWithoutWarnings();
+            }
+          else if ((xy.y < 50) && (busy_flag === false))
+          {
+            var logDatei_name;
+            countdown_timer =  countdown_timer_init ;
+            E.showPrompt("Soll die Datei gelöscht werden?").then(function(v) 
+             {
+               if (v) 
+               {
+                  console.log("'Ja' chosen");
+                    // TATSÄCHLICHES Löschen
+            //performActualFileDeletion(GLOBAL_FILE_LIST.dateiname);
+                  
+                 logDatei_loeschen( GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index]);
+                  
+                 if (GLOBAL_FILE_LIST.count > 0)    // sind noch LOG Datein da ??
+                  {
+                    
+                    if (GLOBAL_FILE_LIST.index > GLOBAL_FILE_LIST.count-1)  // für letzte Element korrigieren
+                    {
+                     
+                      GLOBAL_FILE_LIST.index = GLOBAL_FILE_LIST.count-1;
+                      
+                    }
+                    
+                    
+                    
+                    logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];
+                    //console.log("-------->Name :",logDatei_name);
+                    showLogdatei_neu(logDatei_name);
+                    return;
+                  
+                  }
+                 
+                 
+               } 
+               else 
+               {
+                  console.log("'Nein' chosen");     // Zurück zur Anzeige
+                    
+                  logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];
+                  //console.log("-------->Name :",logDatei_name);
+                  showLogdatei_neu(logDatei_name);
+                  return;
+              
+               }
+          });
+            
+            
+          }
+            
+        });
+    },
+
+  
+     // Aufräumen
+    cleanup: function() {
+        console.log("=== Cleanup ===");
+        Bangle.removeAllListeners('swipe');
+        Bangle.removeAllListeners('touch');
+    }
+}; 
+   
+
+//----------------------------------------------------------
 //29_09
 // === CUSTOM SCROLL-VIEW MIT DEINER ORIGINAL-LOGIK UND ALERTS ===
 var CustomScrollView = {
@@ -624,6 +1258,10 @@ var CustomScrollView = {
         this.fixedDate = title;
         this.measurementCount = dataLines.length;
         
+      
+//       var startTime = Date.now();
+      
+// dauert 9,56 s       
         // Datenzeilen MIT Alerts
         for (var i = 0; i < dataLines.length; i++) {
             var processedLine = this.processLineWithAlert(dataLines[i]);
@@ -635,6 +1273,15 @@ var CustomScrollView = {
             });
         }
         
+      
+/*      
+       var endTime = Date.now();
+       var executionTime = endTime - startTime;
+      executionTime = executionTime.toFixed(0);
+      console.log("++++++++++this.items.push(",executionTime, "ms");   
+*/      
+      
+      
         // LEERZEILEN hinzufügen für volle Seiten
         var itemsPerPage = 5; // 5 Datenzeilen pro Seite
         var remainder = this.items.length % itemsPerPage;
@@ -654,6 +1301,12 @@ var CustomScrollView = {
         
         console.log("Gesamt Items:", this.items.length);
         this.display();
+      
+      
+//      console.log(this.items);
+      
+      
+      
         this.setupSwipeScrolling();
     },
     
@@ -788,6 +1441,13 @@ var CustomScrollView = {
             var itemIndex = this.currentIndex + i;
             if (itemIndex < this.items.length) {
                 var item = this.items[itemIndex];
+               
+   //           console.log(item);
+   //           console.log(content[1],content[2],content[3],content[4]);
+              
+              
+              
+              
                 var y = startY + (i * GLOBAL_SETTINGS.LINE_SPACING);
                 
                 //g.setFont("Vector", item.fontSize);
@@ -826,7 +1486,7 @@ var CustomScrollView = {
                   
                 var x=10;
                 
-                g.drawString(zeit, x, y);
+  //              g.drawString(zeit, x, y);
                   
                   x = 140;
     
@@ -1152,9 +1812,112 @@ var CustomScrollView = {
 }; 
    
 
-// === LOG-DATEI ANZEIGEN ===
+//01_10 === LOG-DATEI ANZEIGEN ===
+
+
+function showLogdatei_neu(logDatei_name) {
+    try {
+        
+      
+      
+//      var startTime = Date.now();
+      
+  console.log("Öffne Log-Datei:", logDatei_name);
+ 
+  var dataLines = [];
+       
+
+      
+      
+  var index= 0;       
+  var zeile;
+  
+  
+      
+  var f = require("Storage").open(logDatei_name, "r");
+  var fileSize = f.getLength();
+        
+  if (fileSize === 0) 
+  {
+    E.showMessage("Leere Datei", "Inhalt");
+    setTimeout(showAllLogsWithoutWarnings, 2000);
+    return;
+  }   
+  
+  var kopf_zeile = f.readLine();
+      
+      
+  while (true)
+  {
+      zeile =f.readLine();
+//    console.log(index ,":",zeile);
+    
+      if (zeile === undefined)
+      {
+        break;
+      }
+    
+    dataLines[index]=zeile;
+    
+      index++;
+  }
+  
+  console.log("----------> Zeilenanzahl",index);
+      
+       if ( GLOBAL_FILE_LIST.index === GLOBAL_FILE_LIST.count-1)  // ist es die neuste Datei, dann Reihenfolge umkehren
+       {
+            
+// === NEU: Log-Reihenfolge umkehren ===
+
+        dataLines.reverse();
+//-------------      
+       }
+      
+        
+        if (dataLines.length === 0) {
+            E.showMessage("Keine Daten", "Inhalt");
+            setTimeout(showAllLogsWithoutWarnings, 2000);
+            return;
+        }
+        
+
+        var dateTitle = logDatei_name.replace("RADIATION_", "").replace(".csv", "");
+        
+         
+          alert_vorhanden = hasAlertValues_neu(dataLines);
+      
+         console.log( "--->Alarme vorhanden : ",alert_vorhanden);
+      
+//01_10
+      
+         CustomScrollView_neu.init(dateTitle, dataLines);
+      
+      
+// 5. VARIABLEN FREIGEBEN
+
+//        content = null;
+        dataLines = null;
+      
+      
+      
+        
+    } catch (e) {
+        E.showMessage("Fehler: " + e.message, "Lesen");
+        setTimeout(showAllLogsWithoutWarnings, 2000);
+    }
+}
+
+
+
+
+
+//-------------------------------
+
 function showLogdatei(logDatei_name) {
     try {
+        
+ //      var startTime = Date.now();
+      
         console.log("Öffne Log-Datei:", logDatei_name);
         
         var f = require("Storage").open(logDatei_name, "r");
@@ -1166,8 +1929,9 @@ function showLogdatei(logDatei_name) {
             return;
         }
         
-        var content = f.read(fileSize);   // hier wird das gesamte File eingelesen
-      
+ //       var content = f.read(fileSize);   // hier wird das gesamte File eingelesen
+          content = f.read(fileSize);   // hier wird das gesamte File eingelesen
+ 
       
        if ( GLOBAL_FILE_LIST.index === GLOBAL_FILE_LIST.count-1)  // ist es die neuste Datei, dann Reihenfolge umkehren
        {
@@ -1181,10 +1945,31 @@ function showLogdatei(logDatei_name) {
 //-------------      
        }
       
+//      var startTime = Date.now();
       
+/*      
+      var endTime = Date.now();
+      var executionTime = endTime - startTime;
+      executionTime = executionTime.toFixed(0);
+      console.log("--->Ausführungszeit Datei laden:",executionTime, "ms");   
+*/            
+      var startTime = Date.now();
+      
+      // dauert 12s !!!!!!!
          var dataLines = content.split('\n').filter(line => line.trim() !== "").slice(1);  // OHNE Header + Zwischenvariable!
      
+     
+      var endTime = Date.now();
+      var executionTime = endTime - startTime;
+      executionTime = executionTime.toFixed(0);
+      console.log("--->Ausführungszeit :",executionTime, "ms");   
+ 
+/*      
+      console.log(content);
+      console.log("---------------");
       
+      console.log(dataLines);
+*/      
       
        // var lines = content.split('\n').filter(line => line.trim() !== "");
         
@@ -1238,14 +2023,14 @@ function showLogdatei(logDatei_name) {
       
       
       
+//01_10      
       
-      
-        CustomScrollView.init(dateTitle, dataLines);
+        CustomScrollView_neu.init(dateTitle, dataLines);
       
       
 // 5. VARIABLEN FREIGEBEN
 
-        content = null;
+//        content = null;
         dataLines = null;
       
       
@@ -1399,9 +2184,89 @@ setTimeout(function() {
 
    Bangle.setLCDBrightness(0);
   
+//-------------------------------------------------------------------   
+/*
+  
+// Dauer für 1 Tag  etwa 3,6 s  
+  
+  var startTime = Date.now();
+  
+ // var f_name="RADIATION_2025-09-29.csv";
+    var f_name="RADIATION_2025-09-30.csv";
   
   
-
+  var f = require("Storage").open(f_name, "r");
+  var index= 0;       
+  var zeile;
+  var kopf_zeile = f.readLine();
+  
+  while (true)
+  {
+      zeile =f.readLine();
+//    console.log(index ,":",zeile);
+    
+      if (zeile === undefined)
+      {
+        break;
+      }
+    
+    gespeicherte_messwerte[index]=zeile;
+    
+    
+    
+      index++;
+  }
+  
+   console.log("----------> Zeilenanzahl",index);
+  
+  
+   var endTime = Date.now();
+   var executionTime = endTime - startTime;
+   executionTime = executionTime.toFixed(0);
+   console.log("--->Ausführungszeit Datei laden:",executionTime, "ms");  
+  
+  // console.log(gespeicherte_messwerte[0]);
+ 
+   var time = gespeicherte_messwerte[0].slice(0,5);
+  
+   var cpm = gespeicherte_messwerte[0].slice(6);
+  
+   console.log(time ," ",cpm);
+  
+  
+  
+  
+   for (var i=0; i< index ;i++)
+   {
+    
+     console.log(gespeicherte_messwerte[i]);
+     
+   }
+  
+   console.log("--------------------------");
+    
+   gespeicherte_messwerte .reverse();
+  
+   for (var i=0; i< index ;i++)
+   {
+    
+     console.log(gespeicherte_messwerte[i]);
+     
+   }
+    
+  
+  
+     console.log("--------------------------");  
+  
+  
+//  14:30,36
+//  13:33,23
+  
+//    gespeicherte_messwerte = null;  Array löschen
+     
+*/
+//-------------------------------------------------------------------------  
+  
   
 // DATEI Liste füllen
     
@@ -1437,7 +2302,12 @@ setTimeout(function() {
    // logDatei_name=GLOBAL_FILE_LIST.files[0];
      
   console.log("-------->Name :",logDatei_name);
-  showLogdatei(logDatei_name);
+   
+showLogdatei_neu(logDatei_name);
+  
+  console.log("**********************************");
+  
+//  showLogdatei(logDatei_name);
   
                   
     
