@@ -77,6 +77,31 @@ var GLOBAL_SETTINGS = {
         posY: 5               // Y-Offset (relativ zur Zeile)
     }
 };
+
+
+function test_log_datei_schreiben()
+{   
+    var filename = "RADIATION_2025-10-01.csv";
+
+		var zeile ="time,cpm\n";
+		
+		var f = require("Storage").open(filename, "a");
+		
+    f.write(zeile);
+		
+		for( var i=0 ; i < 1440  ; i++)
+		{
+		  zeile ="00:59,999\n";
+		  f.write(zeile);
+		}
+	   
+	      console.log("LOG Daten ein ganzer Tag geschrieben" );
+                	
+}
+		
+		
+
+
 //---
 // === ROUTINE ZUM UMKEHREN DER LOG-REIHENFOLGE ===
 function reverseLogContent(content) {
@@ -1814,6 +1839,9 @@ var CustomScrollView = {
 
 //01_10 === LOG-DATEI ANZEIGEN ===
 
+//etwa 58000 Byte in 6s 
+// etwa 10000 Byte werden pro Sekunde gelesen
+
 
 function showLogdatei_neu(logDatei_name) {
     try {
@@ -1826,12 +1854,10 @@ function showLogdatei_neu(logDatei_name) {
  
   var dataLines = [];
        
-
-      
-      
+     
   var index= 0;       
   var zeile;
-  
+  var lade_anzeige = false;
   
       
   var f = require("Storage").open(logDatei_name, "r");
@@ -1844,6 +1870,26 @@ function showLogdatei_neu(logDatei_name) {
     return;
   }   
   
+      
+//    E.showMessage (logDatei_name , "Load DATA ");
+  
+   if (fileSize > 10000 )
+   {
+      lade_anzeige= true;
+       
+       g.clear();
+       g.setColor(BLACK);         
+       var b = logDatei_name.replace("RADIATION_", "").replace(".csv", "");
+       var x_pos= drawCenteredText(b, 16, 25);
+       g.setFont("Vector", 25);
+       g.drawString("load .",x_pos,50);    
+       
+     
+       g.flip();        
+   }
+     
+   var startTime = Date.now();     
+      
   var kopf_zeile = f.readLine();
       
       
@@ -1888,9 +1934,18 @@ function showLogdatei_neu(logDatei_name) {
       
          console.log( "--->Alarme vorhanden : ",alert_vorhanden);
       
-//01_10
+//03_10
       
-         CustomScrollView_neu.init(dateTitle, dataLines);
+
+      
+       var endTime = Date.now();
+       var executionTime = endTime - startTime;
+       executionTime = executionTime.toFixed(0);
+       console.log(" Datei:",logDatei_name, "laden",executionTime, "ms");   
+      
+            
+      
+          CustomScrollView_neu.init(dateTitle, dataLines);
       
       
 // 5. VARIABLEN FREIGEBEN
@@ -2158,7 +2213,6 @@ Bangle.on('backlight', function(backlightOn) {
 
 
 //------
-  
 
 
 //-------
@@ -2184,6 +2238,10 @@ setTimeout(function() {
 
    Bangle.setLCDBrightness(0);
   
+  
+//  test_log_datei_schreiben();
+ 
+		
 //-------------------------------------------------------------------   
 /*
   
