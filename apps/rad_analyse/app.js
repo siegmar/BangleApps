@@ -43,6 +43,7 @@ var gespeicherte_messwerte = [];
 var GLOBAL_FILE_LIST = {
     files: [],                      // Sortierte Dateinamen
     count: 0,                       // Anzahl Dateien
+    busy_flag: false,
     index:0,                        // Index der aktuellen Logdatei
     dateiname:"RADIATION_LIST.txt"  // hier stehen die Dateinamen der gespeicherten Log Datein
 };
@@ -667,12 +668,13 @@ var CustomScrollView_neu = {
     visibleLines: 7,
     startY: 0,
     fixedDate: "",
+ //   busy_flag: false,
     measurementCount: 0,
     
     // Initialisierung
     init: function(title, dataLines) {
         console.log("neu === DEINE ORIGINAL-LOGIK Init ===");
-        
+       // this.busy_flag = false;
         this.items = [];
         this.currentIndex = 0;
         this.fixedDate = title;
@@ -1041,17 +1043,17 @@ var CustomScrollView_neu = {
         var self = this;
         
         Bangle.on('swipe', function(directionLR, directionUD) {
-            console.log("neu === SWIPE erkannt ===");
+            console.log("neu === SWIPE erkannt ===","GLOBAL_FILE_LIST.busy_flag" ,GLOBAL_FILE_LIST.busy_flag);
             console.log("LR:", directionLR, "UD:", directionUD);
-            var busy_flag = false;
-           if ((directionLR === 1) && (busy_flag === false))
+          
+           if ((directionLR === 1) && (GLOBAL_FILE_LIST.busy_flag === false))
            {
               countdown_timer =  countdown_timer_init ;
               if (GLOBAL_FILE_LIST.index > 0)
               {  
                  
-                 Bangle.setLocked(true);
-                busy_flag = true;
+                // Bangle.setLocked(true);
+                GLOBAL_FILE_LIST.busy_flag = true;
                  GLOBAL_FILE_LIST.index--;
               
                  var logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];               
@@ -1068,8 +1070,8 @@ var CustomScrollView_neu = {
                  drawCenteredText(GLOBAL_FILE_LIST.index + 1 +"/" + GLOBAL_FILE_LIST.count, 70, 38);
 
                  showLogdatei_neu(logDatei_name);
-                 busy_flag = false;
-                 Bangle.setLocked(false);
+                 GLOBAL_FILE_LIST.busy_flag = false;
+                 //Bangle.setLocked(false);
                }
           
             }
@@ -1085,14 +1087,14 @@ var CustomScrollView_neu = {
 */          
             
             // LINKS-NACH-RECHTS  am Ende der Liste = BEENDEN
-            if ((directionLR === -1) && (busy_flag === false))
+            if ((directionLR === -1) && (GLOBAL_FILE_LIST.busy_flag === false))
             {
                 countdown_timer =  countdown_timer_init ;
                 console.log("neu ---->Wischen RECHTS-NACH-LINKS ");
                 if (GLOBAL_FILE_LIST.index < GLOBAL_FILE_LIST.count -1 )
                 {
                    Bangle.setLocked(true);
-                   busy_flag = true;
+                   GLOBAL_FILE_LIST.busy_flag = true;
                   
                    GLOBAL_FILE_LIST.index ++;
                    var logDatei = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];  
@@ -1109,7 +1111,7 @@ var CustomScrollView_neu = {
                    drawCenteredText(GLOBAL_FILE_LIST.index + 1 +"/" + GLOBAL_FILE_LIST.count, 70, 38);
  
                    showLogdatei_neu(logDatei);
-                   busy_flag = false;
+                   GLOBAL_FILE_LIST.busy_flag = false;
                   Bangle.setLocked(false);
                 }
                 else
@@ -1189,7 +1191,7 @@ var CustomScrollView_neu = {
         Bangle.on('touch', function(button, xy) {
             console.log("=== Touch erkannt ===");
             console.log("Y:", xy.y);
-            var busy_flag = false;
+            //var busy_flag = false;
             // Ganz unten = zurück
             if (xy.y > 160) 
             {
@@ -1198,9 +1200,13 @@ var CustomScrollView_neu = {
                 //self.cleanup();
                 //showAllLogsWithoutWarnings();
             }
-          else if ((xy.y < 50) && (busy_flag === false))
+          else if ((xy.y < 50) && (GLOBAL_FILE_LIST.busy_flag === false))
           {
             var logDatei_name;
+            GLOBAL_FILE_LIST.busy_flag = true;
+            
+            
+            
             countdown_timer =  countdown_timer_init ;
             E.showPrompt("Soll die Datei gelöscht werden?").then(function(v) 
              {
@@ -1226,7 +1232,9 @@ var CustomScrollView_neu = {
                     
                     logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];
                     //console.log("-------->Name :",logDatei_name);
+                    GLOBAL_FILE_LIST.busy_flag = false;
                     showLogdatei_neu(logDatei_name);
+                    
                     return;
                   
                   }
@@ -1239,7 +1247,10 @@ var CustomScrollView_neu = {
                     
                   logDatei_name = GLOBAL_FILE_LIST.files[GLOBAL_FILE_LIST.index];
                   //console.log("-------->Name :",logDatei_name);
-                  showLogdatei_neu(logDatei_name);
+                  
+                 GLOBAL_FILE_LIST.busy_flag =false;
+                 showLogdatei_neu(logDatei_name);
+                 
                   return;
               
                }
@@ -1841,7 +1852,7 @@ var CustomScrollView = {
 
 //etwa 58000 Byte in 6s 
 // etwa 10000 Byte werden pro Sekunde gelesen
-
+// etwa 240 Zeilen pro Sekunde
 
 function showLogdatei_neu(logDatei_name) {
     try {
@@ -1858,11 +1869,22 @@ function showLogdatei_neu(logDatei_name) {
   var index= 0;       
   var zeile;
   var lade_anzeige = false;
-  
-      
+  var index_merker=240;
+  var fortschritt_anzeige = false;     
   var f = require("Storage").open(logDatei_name, "r");
   var fileSize = f.getLength();
-        
+    
+//04_10      
+      
+  //Bangle.setOptions({btnLoadTimeout : 9000});
+      
+//    Bangle.setOptions ( {backlightTimeout :9000});
+          
+//    Bangle.setOptions ( {lockTimeout :9000});   
+      
+      
+  var x_pos;
+      
   if (fileSize === 0) 
   {
     E.showMessage("Leere Datei", "Inhalt");
@@ -1880,10 +1902,12 @@ function showLogdatei_neu(logDatei_name) {
        g.clear();
        g.setColor(BLACK);         
        var b = logDatei_name.replace("RADIATION_", "").replace(".csv", "");
-       var x_pos= drawCenteredText(b, 16, 25);
-       g.setFont("Vector", 25);
-       g.drawString("load .",x_pos,50);    
+       x_pos= drawCenteredText(b, 16, 25);
+       g.setFont("Vector", 30);
+       g.drawString("load .",x_pos,80);    
        
+       x_pos = x_pos + 85; 
+       fortschritt_anzeige = true;
      
        g.flip();        
    }
@@ -1906,6 +1930,19 @@ function showLogdatei_neu(logDatei_name) {
     dataLines[index]=zeile;
     
       index++;
+    
+    if ((index >  index_merker) && (fortschritt_anzeige === true))   // etwa 1 s vergangen
+    {
+      index_merker = index_merker + 240;  
+    
+      g.drawString(".",x_pos,80); 
+      
+      x_pos = x_pos + 10;
+      
+      g.flip();
+    
+    }
+    
   }
   
   console.log("----------> Zeilenanzahl",index);
@@ -2237,7 +2274,7 @@ setTimeout(function() {
    Bangle.setOptions({wakeOnBTN1 : true});
 
    Bangle.setLCDBrightness(0);
-  
+   Bangle.setOptions ( {lockTimeout :10000});  // lock nach 10s weile laden der LOg bis 6s dauern kann
   
 //  test_log_datei_schreiben();
  
