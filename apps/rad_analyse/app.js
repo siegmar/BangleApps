@@ -52,10 +52,20 @@ var GLOBAL_FILE_LIST = {
 
 // === GLOBALE EINSTELLUNGEN ===
 var GLOBAL_SETTINGS = {
-    GREEN_GRENZWERT: 30,
+    GREEN_GRENZWERT : 30,
     YELLOW_GRENZWERT: 50,
-	messwert_einheit: GMZ,
+	  messwert_einheit: GMZ,
+    backlightTimeout : 10,       // in Sekunden 
+    lockTimeout      : 30,
+    back_light_on    : false,   // Beleuchtung ist aus, eingeführt, damit wenn Licht an, auch RAD_Analse Livht an ist
+  
+  
+  
+  
+  
     
+  
+  
     FONT_SIZES: {
         title: 16,
         subtitle: 18,
@@ -157,9 +167,10 @@ function radiation_settings_abspeichern()
         
         // Settings speichern
         var settings = {
-			messwert_einheit: GLOBAL_SETTINGS.messwert_einheit,
-            GREEN_GRENZWERT: GLOBAL_SETTINGS.GREEN_GRENZWERT,
-            YELLOW_GRENZWERT: GLOBAL_SETTINGS.YELLOW_GRENZWERT
+			      messwert_einheit: GLOBAL_SETTINGS.messwert_einheit,
+            GREEN_GRENZWERT : GLOBAL_SETTINGS.GREEN_GRENZWERT,
+            YELLOW_GRENZWERT: GLOBAL_SETTINGS.YELLOW_GRENZWERT,
+            back_light_on   : GLOBAL_SETTINGS.back_light_on   
         };
         
         require("Storage").write("radiation_settings.json", JSON.stringify(settings));
@@ -186,7 +197,7 @@ function radiation_setting_laden() {
             GLOBAL_SETTINGS.messwert_einheit = settings.messwert_einheit;
 			      GLOBAL_SETTINGS.GREEN_GRENZWERT  = settings.GREEN_GRENZWERT;
 			      GLOBAL_SETTINGS.YELLOW_GRENZWERT = settings.YELLOW_GRENZWERT;
-			
+            GLOBAL_SETTINGS.back_light_on    = settings.back_light_on; 
 			
             return true;
         } 
@@ -1892,12 +1903,21 @@ function showLogdatei_neu(logDatei_name) {
     return;
   }   
   
+         console.log( "**********> GLOBAL_SETTINGS.back_light_on: ",GLOBAL_SETTINGS.back_light_on);
+      
+      
+      
       
 //    E.showMessage (logDatei_name , "Load DATA ");
   
    if (fileSize > 10000 )
    {
-      lade_anzeige= true;
+      
+     
+       
+      // Bangle.setOptions ( {lockTimeout :20000});  // lock nach 10s weile laden der LOg bis 6s dauern kann
+      
+       lade_anzeige= true;
        
        g.clear();
        g.setColor(BLACK);         
@@ -1944,8 +1964,34 @@ function showLogdatei_neu(logDatei_name) {
     }
     
   }
+        //n Bangle.setOptions ( {lockTimeout :10000});  //
+      
+      
+  //    GLOBAL_SETTINGS.back_light_on = true;
+      
+      
+console.log("--------------------------------");      
   
-  console.log("----------> Zeilenanzahl",index);
+        if (GLOBAL_SETTINGS.back_light_on === false)
+        {
+          Bangle.setLCDBrightness(0);
+           console.log("----> aus ");
+          
+        }
+        else
+        {
+          Bangle.setLCDBrightness(1);
+          GLOBAL_SETTINGS.back_light_on = true;
+           console.log("----> ein ");
+        }
+                   
+      
+console.log("---------------------------------");          
+      
+      
+      
+      
+      console.log("----------> Zeilenanzahl",index);
       
        if ( GLOBAL_FILE_LIST.index === GLOBAL_FILE_LIST.count-1)  // ist es die neuste Datei, dann Reihenfolge umkehren
        {
@@ -2195,14 +2241,30 @@ setWatch(function(f) {
     
   if (button_click_zaehler ===1 )
   {
-    Bangle.setOptions({btnLoadTimeout : 3000});
+    Bangle.setOptions({btnLoadTimeout : 3000});   // wie lange die Taste gedrückt
+                                                  // werden muss, bevor in CLOCK Modus
+    
     Bangle.setLCDBrightness(1);
+    
+    Bangle.setOptions ( {backlightTimeout :10000});
+    
+    Bangle.setOptions ( {lockTimeout :10000});  // lock nach 10s weile laden der LOg bis 6s dauern kann
+  
+    
+    GLOBAL_SETTINGS.back_light_on = true;
+	
   }
   else
   {
   
     Bangle.setOptions({btnLoadTimeout : 3000});
     Bangle.setLCDBrightness(0);
+    
+    Bangle.setOptions ( {lockTimeout :10000});  // lock nach 10s weile laden der LOg bis 6s dauern kann
+  
+    
+    GLOBAL_SETTINGS.back_light_on = false;
+	
     button_click_zaehler = 0; 
   }
   
@@ -2215,18 +2277,31 @@ setWatch(function(f) {
 
 
 
-
-
+//06_10
 
 //-------
 
 // Bessere Lösung mit backlight Event
-Bangle.on('lock', function(isLocked) {
-    if (!isLocked) {
+Bangle.on('lock', function(isLocked,lock_ursache) {
+    
+  console.log("-------lock_ursache",lock_ursache); 
+  
+      if (!isLocked) {
         console.log(" *** LOCK OFF *** ");
         // Beim Entsperren 
       
-        Bangle.setLCDBrightness(0);
+       
+        if (GLOBAL_SETTINGS.back_light_on === false)
+        {
+          Bangle.setLCDBrightness(0);
+        }
+        else
+        {
+          Bangle.setLCDBrightness(1);
+          GLOBAL_SETTINGS.back_light_on = true;
+        }
+                   
+	
        g.setColor(WHITE);
        g.fillRect( 1,8, 1 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectWidth,   // Breite
                         8 + GLOBAL_SETTINGS.ALERT_SETTINGS.rectHeight); // Höhe
@@ -2245,7 +2320,8 @@ Bangle.on('lock', function(isLocked) {
 // Backlight Event für Display-Änderungen
 Bangle.on('backlight', function(backlightOn) {
     console.log("Backlight:", backlightOn);
-    // Kurze Verzögerung für Widget-Stabilisierung
+    
+  // Kurze Verzögerung für Widget-Stabilisierung
 });
 
 
@@ -2272,8 +2348,19 @@ setTimeout(function() {
   
    console.log("HIER BIN ICH");
    Bangle.setOptions({wakeOnBTN1 : true});
-
-   Bangle.setLCDBrightness(0);
+   
+  if (GLOBAL_SETTINGS.back_light_on === false)
+  {
+    Bangle.setLCDBrightness(0);
+  }
+  else
+  {
+    Bangle.setLCDBrightness(1);
+    GLOBAL_SETTINGS.back_light_on = true;
+    Bangle.setOptions ( {backlightTimeout :11000});
+  }
+    
+    
    Bangle.setOptions ( {lockTimeout :10000});  // lock nach 10s weile laden der LOg bis 6s dauern kann
   
 //  test_log_datei_schreiben();
