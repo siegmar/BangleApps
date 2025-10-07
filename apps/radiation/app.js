@@ -322,7 +322,8 @@ var GLOBAL_SETTINGS = {
 	  backlightTimeout  : 10,   // in Sekunden 
     lockTimeout       : 30,
     warte_linie       : false,  // warte Linie bis der nächste Messwert kommt braucht viel Enerie, deshalb abschaltbar !
-    keine_grenzwerte  : false
+    keine_grenzwerte  : false,
+    back_light_on     : false   // Beleuchtung ist aus, eingeführt, damit wenn Licht an, auch RAD_Analse Livht an ist
   
 };
 var messwert_einheit_merker = GMZ;     // !!!!! Wichtig, sonst wird nix dargestellt
@@ -364,9 +365,9 @@ function radiation_settings_abspeichern()
 			      messwert_einheit : GLOBAL_SETTINGS.messwert_einheit,
             GREEN_GRENZWERT  : GLOBAL_SETTINGS.GREEN_GRENZWERT,
             YELLOW_GRENZWERT : GLOBAL_SETTINGS.YELLOW_GRENZWERT,
-            warte_linie      :  GLOBAL_SETTINGS.warte_linie , 
-            keine_grenzwerte :  GLOBAL_SETTINGS.keine_grenzwerte
-                  
+            warte_linie      : GLOBAL_SETTINGS.warte_linie , 
+            keine_grenzwerte : GLOBAL_SETTINGS.keine_grenzwerte,
+            back_light_on    : GLOBAL_SETTINGS.back_light_on       
         };
         
         require("Storage").write("radiation_settings.json", JSON.stringify(settings));
@@ -405,8 +406,7 @@ function radiation_setting_laden() {
 			      GLOBAL_SETTINGS.YELLOW_GRENZWERT = settings.YELLOW_GRENZWERT;
 			      GLOBAL_SETTINGS.warte_linie      = settings.warte_linie;
             GLOBAL_SETTINGS.keine_grenzwerte = settings.keine_grenzwerte;
-                     
-			
+            GLOBAL_SETTINGS.back_light_on    = settings.back_light_on; 
             return true;
         } 
      } catch (e) 
@@ -1116,15 +1116,44 @@ var DailyLogger = {
             var f = require("Storage").open(filename, "r");
             var size = f.getLength();
             
-            if (size > 0) {
-                var content = f.read(size);
-                console.log(content);
-            } else {
+            if (size > 0) 
+            {
+              //  var content = f.read(size);
+              //  console.log(content);
+              
+              var zeile;
+              var zeilen_anzahl = 0;
+              
+              while (true)
+              {
+                zeile =f.readLine();
+//              console.log(index ,":",zeile);
+    
+               if (zeile === undefined)
+               {
+                 break;
+               }
+               
+               zeilen_anzahl++; 
+                
+              }
+                
+              
+              zeilen_anzahl=zeilen_anzahl-1;  
+              
+              return zeilen_anzahl;     // ohne Kopf !!!
+
+            } 
+            else 
+            {
                 console.log("Keine Daten vorhanden");
+                return 0;
             }
             
         } catch (e) {
             console.log("Fehler:", e);
+            return 0;
+          
         }
     }
 };
@@ -3019,7 +3048,19 @@ Bangle.setOptions({wakeOnBTN1 : true});
 
 Bangle.setLCDBrightness(0);
 
+GLOBAL_SETTINGS.back_light_on = false;
+	
 betriebsmodus = GMZ_GROSS ;
+
+
+	  
+	   anzahl_geloogte_messwerte = DailyLogger.showToday();
+	   
+	   
+	   console.log(" *******>anzahl_geloogte_messwerte :", anzahl_geloogte_messwerte );
+
+
+
 
 
 
@@ -3161,12 +3202,14 @@ setWatch(function(f) {
   {
     Bangle.setOptions({btnLoadTimeout : 3000});
     Bangle.setLCDBrightness(1);
+    GLOBAL_SETTINGS.back_light_on = true;
   }
   else
   {
   
     Bangle.setOptions({btnLoadTimeout : 3000});
     Bangle.setLCDBrightness(0);
+    GLOBAL_SETTINGS.back_light_on = false;
     button_click_zaehler = 0; 
   }
   
@@ -3266,8 +3309,9 @@ Bangle.on('lock', function(isLocked) {
         // Beim Entsperren 
       
         Bangle.setLCDBrightness(0);
-      
-        setTimeout(function() {
+        GLOBAL_SETTINGS.back_light_on = false;
+        
+      setTimeout(function() {
             status_zeile_anzeigen();
         }, 250);
     } else {
@@ -3281,6 +3325,7 @@ Bangle.on('lock', function(isLocked) {
 
 // Backlight Event für Display-Änderungen
 Bangle.on('backlight', function(backlightOn) {
+    
     console.log("Backlight:", backlightOn);
     // Kurze Verzögerung für Widget-Stabilisierung
     setTimeout(function() {
