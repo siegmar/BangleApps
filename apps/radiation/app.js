@@ -1085,6 +1085,10 @@ var DailyLogger = {
                 
                 var header = "time,cpm\n";
                 f.write(header + csvLine);
+//13_10                
+                anzahl_geloogte_messwerte_merker = 0;
+                anzahl_geloogte_messwerte = 1;
+              
                 console.log("Neue Datei:", filename);
                 
                 return addNewFilenameToList(filename);    //  GLOBAL_FILE_LIST.count wird erhöht ;
@@ -1244,6 +1248,7 @@ function status_zeile_anzeigen(alles_darstellen)
       g.drawString(valueStr, 90, 1);
       
      console.log("%%%%%%%%%%% Alpha_Stick_RSSI : ", Alpha_Stick_RSSI);
+      g.flip();  
     }
   
 //------ Anzahl der Telegramme anzeigen --------  
@@ -1255,8 +1260,8 @@ function status_zeile_anzeigen(alles_darstellen)
     valueStr =  telegramm_zaehler .toString();
     g.drawString(valueStr, 20, 3);
 */  
-    
-if ((anzahl_geloogte_messwerte > anzahl_geloogte_messwerte_merker)||         (alles_darstellen == true ))
+   // status_zeile_anzeigen(true);
+if ((anzahl_geloogte_messwerte > anzahl_geloogte_messwerte_merker)|| (alles_darstellen === true ))
 //    if (anzahl_geloogte_messwerte > anzahl_geloogte_messwerte_merker)
     {
       
@@ -1272,7 +1277,7 @@ if ((anzahl_geloogte_messwerte > anzahl_geloogte_messwerte_merker)||         (al
       valueStr = anzahl_geloogte_messwerte.toString();
       g.drawString(valueStr, 20, 1);
   
-  
+      g.flip();
     }
   
 /*  
@@ -2576,6 +2581,12 @@ const GMZ_HIGH_RATE_FLAG        = BIT_7 ;
 
             GMZ_Impulse_pro_Minute = advertising_array_neu[index] + (advertising_array_neu[index+1]<<8);
             
+          
+          
+//           GMZ_Impulse_pro_Minute = 3778;
+          
+          
+//10_10          
             index=index+2;         
             
             mess_data_GMZ_Impulse_pro_Minute = GMZ_Impulse_pro_Minute;
@@ -2707,12 +2718,30 @@ const GMZ_HIGH_RATE_FLAG        = BIT_7 ;
  console.log("\n GLOBAL_SETTINGS.keine_grenzwerte",GLOBAL_SETTINGS.keine_grenzwerte); 
  
 
+                
+                
+                
+                
+                
+                
+                
                 if ( (GMZ_Impulse_pro_Minute > GLOBAL_SETTINGS.GREEN_GRENZWERT ) || (GLOBAL_SETTINGS.keine_grenzwerte === true))
                 {
                   
                    console.log("\n HURRA Messdaten werden gespeichert"); 
                   
-                  DailyLogger.log(GMZ_Impulse_pro_Minute);
+                  if (DailyLogger.log(GMZ_Impulse_pro_Minute) === true)
+                  {
+                     console.log("\n HURRA Messdaten werden gespeichert");
+                    
+                    
+                  }
+                  else
+                  {
+                     console.log("\n FEHLER :  Messdaten werden nicht gespeichert"); 
+                  }
+                                   
+                  
                 }
                 
                 
