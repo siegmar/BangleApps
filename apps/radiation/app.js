@@ -355,6 +355,22 @@ var GLOBAL_FILE_LIST = {
 //*********************************** Programme *****************************
 
 
+// für TEST Export über webinface 
+
+function getData(callback) {
+  var f = require("Storage").open("RADIATION_2025-09-27.csv","r");
+  var l = f.readLine();
+  while (l!==undefined) {
+    callback(l);
+    l = f.readLine();
+  }
+}
+
+
+//-----------------
+
+
+
 function radiation_settings_abspeichern()
  {
     try {
