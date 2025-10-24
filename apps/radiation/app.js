@@ -358,7 +358,7 @@ var GLOBAL_FILE_LIST = {
 // für TEST Export über webinface 
 
 function getData(callback) {
-  var f = require("Storage").open("RADIATION_2025-09-27.csv","r");
+  var f = require("Storage").open("RADIATION_LIST.txt","r");
   var l = f.readLine();
   while (l!==undefined) {
     callback(l);
