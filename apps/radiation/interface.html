@@ -1,55 +1,79 @@
-<!-- INTERFACE.HTML - MIT DATEIAUSWAHL -->
+<!-- INTERFACE.HTML - MIT RADIATION_LIST.TXT INTEGRATION -->
 <html>
   <head>
     <link rel="stylesheet" href="../../css/spectre.min.css">
     <style>
       .file-list {
-        max-height: 300px;
+        max-height: 200px;
         overflow-y: auto;
         border: 1px solid #ccc;
         margin: 10px 0;
         padding: 5px;
+        background-color: #f8f8f8;
       }
       .file-item {
         cursor: pointer;
-        padding: 5px;
+        padding: 8px;
         border-bottom: 1px solid #eee;
+        font-size: 14px;
       }
       .file-item:hover {
-        background-color: #f0f0f0;
+        background-color: #e0e0e0;
       }
       .file-item.selected {
         background-color: #007bff;
         color: white;
+        font-weight: bold;
       }
       table {
         font-size: 12px;
         width: 100%;
+        border-collapse: collapse;
       }
       th, td {
         padding: 4px;
         text-align: left;
+        border: 1px solid #ddd;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      .alert-cell {
+        background-color: #ffcccc;
+        font-weight: bold;
+      }
+      .status-bar {
+        background-color: #000;
+        color: #fff;
+        padding: 5px;
+        font-size: 12px;
+        margin-bottom: 10px;
       }
     </style>
   </head>
   <body>
+    <div class="status-bar" id="status">Loading file list...</div>
+    
     <h3>Radiation Data Transfer</h3>
     
-    <!-- DATEIAUSWAHL -->
+    <!-- DATEI-LISTE AUS RADIATION_LIST.TXT -->
     <div>
-      <h4>Dateiauswahl:</h4>
+      <h4>Available Log Files:</h4>
       <div id="fileList" class="file-list">
-        <p>Lade Dateiliste...</p>
+        <p>Loading...</p>
       </div>
     </div>
     
-    <!-- DATENANZEIGE -->
-    <div id="data"></div>
+    <!-- DATEN-TABELLE -->
+    <div id="dataContainer">
+      <h4>Data Preview:</h4>
+      <div id="data"></div>
+    </div>
     
     <!-- BUTTONS -->
-    <div>
-      <button class="btn btn-primary" id="btnLoad">Load Data</button>
-      <button class="btn btn-success" id="btnSave">Save CSV</button>
+    <div style="margin-top: 15px;">
+      <button class="btn btn-primary" id="btnLoad">Load Selected File</button>
+      <button class="btn btn-success" id="btnSave">Save as CSV</button>
       <button class="btn btn-error" id="btnDelete">Delete File</button>
       <button class="btn btn-default" id="btnRefresh">Refresh List</button>
     </div>
@@ -59,55 +83,61 @@
 // === GLOBALE VARIABLEN ===
 var dataElement = document.getElementById("data");
 var fileListElement = document.getElementById("fileList");
+var statusElement = document.getElementById("status");
 var csvData = "";
 var selectedFile = "";
 var availableFiles = [];
+var fileDataCache = {}; // Cache für geladene Dateien
 
-// === DATEILISTE LADEN ===
-function loadFileList() {
-  console.log("=== Lade Dateiliste ===");
+// === STATUS-ANZEIGE ===
+function updateStatus(message) {
+  statusElement.textContent = message;
+  console.log("[STATUS]", message);
+}
+
+// === DATEI-LISTE AUS RADIATION_LIST.TXT LADEN ===
+function loadRadiationFileList() {
+  updateStatus("Loading RADIATION_LIST.txt...");
   
-  Util.showModal("Loading file list...");
-  
-  // RADIATION_LIST.txt laden
   Util.readStorage("RADIATION_LIST.txt", function(data) {
     try {
       if (data && data.length > 0) {
         // Dateiliste parsen
-        availableFiles = data.trim().split('\n').filter(line => line.trim() !== "");
-        console.log("Gefundene Dateien:", availableFiles.length);
+        availableFiles = data.trim().split('\n')
+          .filter(line => line.trim() !== "")
+          .filter(filename => filename.startsWith("RADIATION_") && filename.endsWith(".csv"));
         
+        availableFiles.sort().reverse(); // Neueste zuerst
+        
+        updateStatus("Found " + availableFiles.length + " log files");
         displayFileList();
+        
       } else {
-        console.log("Keine Dateiliste gefunden");
-        fileListElement.innerHTML = "<p>Keine Dateien gefunden</p>";
+        updateStatus("No RADIATION_LIST.txt found");
+        fileListElement.innerHTML = "<p>No radiation log files found</p>";
         availableFiles = [];
       }
+      
     } catch (e) {
-      console.log("Fehler beim Parsen:", e.message);
-      fileListElement.innerHTML = "<p>Fehler beim Laden der Dateiliste</p>";
+      updateStatus("Error reading file list: " + e.message);
+      fileListElement.innerHTML = "<p>Error loading file list</p>";
       availableFiles = [];
     }
-    
-    Util.hideModal();
   });
 }
 
-// === DATEILISTE ANZEIGEN ===
+// === DATEI-LISTE ANZEIGEN ===
 function displayFileList() {
-  console.log("=== Zeige Dateiliste ===");
-  
   if (availableFiles.length === 0) {
-    fileListElement.innerHTML = "<p>Keine Dateien verfügbar</p>";
+    fileListElement.innerHTML = "<p>No log files available</p>";
     return;
   }
   
   var html = "";
   for (var i = 0; i < availableFiles.length; i++) {
-    var filename = availableFiles[i].trim();
-    if (filename.startsWith("RADIATION_") && filename.endsWith(".csv")) {
-      html += `<div class="file-item" data-file="${filename}">${filename}</div>`;
-    }
+    var filename = availableFiles[i];
+    var display = filename.replace("RADIATION_", "").replace(".csv", "");
+    html += `<div class="file-item" data-file="${filename}">${display}</div>`;
   }
   
   fileListElement.innerHTML = html;
@@ -122,7 +152,7 @@ function displayFileList() {
       // Dieses auswählen
       this.classList.add('selected');
       selectedFile = this.getAttribute('data-file');
-      console.log("Ausgewählt:", selectedFile);
+      updateStatus("Selected: " + selectedFile);
       
       // Automatisch laden
       loadSelectedFile();
@@ -133,103 +163,120 @@ function displayFileList() {
   if (fileItems.length > 0) {
     fileItems[0].classList.add('selected');
     selectedFile = fileItems[0].getAttribute('data-file');
-    console.log("Standard-Auswahl:", selectedFile);
+    updateStatus("Auto-selected: " + selectedFile);
   }
 }
 
 // === AUSGEWÄHLTE DATEI LADEN ===
 function loadSelectedFile() {
   if (!selectedFile) {
-    dataElement.innerHTML = "<b>Keine Datei ausgewählt</b>";
+    dataElement.innerHTML = "<b>Please select a file first</b>";
     return;
   }
   
-  console.log("=== Lade ausgewählte Datei ===");
-  console.log("Datei:", selectedFile);
+  updateStatus("Loading " + selectedFile + "...");
   
-  Util.showModal("Loading " + selectedFile + "...");
+  // Prüfen ob bereits im Cache
+  if (fileDataCache[selectedFile]) {
+    displayCSVData(fileDataCache[selectedFile]);
+    updateStatus("Loaded from cache: " + selectedFile);
+    return;
+  }
   
   // Datei laden
   Util.readStorageFile(selectedFile, function(data) {
     try {
-      csvData = data ? data.trim() : "";
-      
-      if (csvData.length === 0) {
-        dataElement.innerHTML = "<b>Leere Datei: " + selectedFile + "</b>";
-        Util.hideModal();
-        return;
+      if (data && data.length > 0) {
+        csvData = data.trim();
+        fileDataCache[selectedFile] = csvData; // Im Cache speichern
+        displayCSVData(csvData);
+        updateStatus("Loaded: " + selectedFile);
+      } else {
+        dataElement.innerHTML = "<b>Empty file: " + selectedFile + "</b>";
+        updateStatus("Empty file: " + selectedFile);
+        csvData = "";
       }
       
-      // Daten als Tabelle anzeigen
-      displayCSVData(csvData);
-      
     } catch (e) {
-      console.log("Fehler beim Laden:", e.message);
-      dataElement.innerHTML = "<b>Fehler beim Laden: " + e.message + "</b>";
+      dataElement.innerHTML = "<b>Error loading file: " + e.message + "</b>";
+      updateStatus("Error: " + e.message);
+      csvData = "";
     }
-    
-    Util.hideModal();
   });
 }
 
 // === CSV-DATEN ALS TABELLE ANZEIGEN ===
 function displayCSVData(data) {
-  console.log("=== Zeige CSV-Daten ===");
-  
   if (!data || data.length === 0) {
-    dataElement.innerHTML = "<b>Keine Daten vorhanden</b>";
+    dataElement.innerHTML = "<b>No data available</b>";
     return;
   }
   
-  var lines = data.split('\n').filter(line => line.trim() !== "");
-  
-  if (lines.length === 0) {
-    dataElement.innerHTML = "<b>Keine gültigen Daten</b>";
-    return;
-  }
-  
-  // Header-Zeile
-  var header = lines[0];
-  var headerParts = header.split(',');
-  
-  // Datenzeilen
-  var dataLines = lines.slice(1);
-  
-  // Tabelle erstellen
-  var tableHtml = `<table class="table table-striped">
-    <thead>
-      <tr>`;
-  
-  // Header
-  for (var h = 0; h < headerParts.length; h++) {
-    tableHtml += `<th>${headerParts[h].trim()}</th>`;
-  }
-  tableHtml += `</tr>
-    </thead>
-    <tbody>`;
-  
-  // Datenzeilen (max. 50 für Performance)
-  var displayLines = Math.min(50, dataLines.length);
-  for (var i = 0; i < displayLines; i++) {
-    var line = dataLines[i];
-    var parts = line.split(',');
+  try {
+    var lines = data.split('\n').filter(line => line.trim() !== "");
     
-    tableHtml += `<tr>`;
-    for (var j = 0; j < parts.length; j++) {
-      tableHtml += `<td>${parts[j].trim()}</td>`;
+    if (lines.length === 0) {
+      dataElement.innerHTML = "<b>No valid data lines</b>";
+      return;
     }
-    tableHtml += `</tr>`;
+    
+    // Header-Zeile
+    var header = lines[0];
+    var headerParts = header.split(',');
+    
+    // Datenzeilen
+    var dataLines = lines.slice(1);
+    
+    // Tabelle erstellen
+    var tableHtml = `<table class="table table-striped">
+      <thead>
+        <tr>`;
+    
+    // Header
+    for (var h = 0; h < headerParts.length; h++) {
+      tableHtml += `<th>${headerParts[h].trim()}</th>`;
+    }
+    tableHtml += `</tr>
+      </thead>
+      <tbody>`;
+    
+    // Erste 20 Datenzeilen (Performance)
+    var displayLines = Math.min(20, dataLines.length);
+    for (var i = 0; i < displayLines; i++) {
+      var line = dataLines[i];
+      var parts = line.split(',');
+      
+      tableHtml += `<tr>`;
+      for (var j = 0; j < parts.length; j++) {
+        var cellContent = parts[j].trim();
+        
+        // Alert-Zellen hervorheben (wenn CPM > 35)
+        if (j === 1) { // CPM-Spalte
+          var cpmValue = parseInt(cellContent) || 0;
+          if (cpmValue > 35) {
+            tableHtml += `<td class="alert-cell">${cellContent}</td>`;
+          } else {
+            tableHtml += `<td>${cellContent}</td>`;
+          }
+        } else {
+          tableHtml += `<td>${cellContent}</td>`;
+        }
+      }
+      tableHtml += `</tr>`;
+    }
+    
+    tableHtml += `</tbody></table>`;
+    
+    // Info bei vielen Zeilen
+    if (dataLines.length > 20) {
+      tableHtml += `<p><i>... and ${dataLines.length - 20} more lines</i></p>`;
+    }
+    
+    dataElement.innerHTML = tableHtml;
+    
+  } catch (e) {
+    dataElement.innerHTML = "<b>Error displaying data: " + e.message + "</b>";
   }
-  
-  tableHtml += `</tbody></table>`;
-  
-  // Info bei vielen Zeilen
-  if (dataLines.length > 50) {
-    tableHtml += `<p><i>... und ${dataLines.length - 50} weitere Zeilen</i></p>`;
-  }
-  
-  dataElement.innerHTML = tableHtml;
-  console.log("Angezeigte Zeilen:", displayLines);
 }
 
 // === BUTTON-EVENTS ===
@@ -237,7 +284,8 @@ document.getElementById("btnLoad").addEventListener("click", function() {
   if (selectedFile) {
     loadSelectedFile();
   } else {
-    alert("Bitte zuerst eine Datei auswählen!");
+    updateStatus("Please select a file first!");
+    alert("Please select a file first!");
   }
 });
 
@@ -245,101 +293,86 @@ document.getElementById("btnSave").addEventListener("click", function() {
   if (csvData && csvData.length > 0 && selectedFile) {
     var filename = selectedFile.replace(".csv", "");
     Util.saveCSV(filename, csvData);
-    console.log("Gespeichert:", filename);
+    updateStatus("Saved: " + filename + ".csv");
   } else {
-    alert("Keine Daten zum Speichern!");
+    updateStatus("No data to save!");
+    alert("No data to save!");
   }
 });
 
 document.getElementById("btnDelete").addEventListener("click", function() {
   if (selectedFile) {
-    if (confirm("Wirklich löschen: " + selectedFile + "?")) {
-      Util.showModal("Deleting " + selectedFile + "...");
+    if (confirm("Really delete: " + selectedFile + "?")) {
+      updateStatus("Deleting " + selectedFile + "...");
       
       Util.eraseStorageFile(selectedFile, function() {
-        console.log("Gelöscht:", selectedFile);
-        Util.hideModal();
+        updateStatus("Deleted: " + selectedFile);
+        
+        // Aus Cache entfernen
+        delete fileDataCache[selectedFile];
         
         // Liste neu laden
-        loadFileList();
-        dataElement.innerHTML = "<b>Datei gelöscht: " + selectedFile + "</b>";
+        loadRadiationFileList();
+        dataElement.innerHTML = "<b>File deleted: " + selectedFile + "</b>";
         csvData = "";
         selectedFile = "";
       });
     }
   } else {
-    alert("Keine Datei zum Löschen!");
+    updateStatus("No file selected!");
+    alert("No file selected!");
   }
 });
 
 document.getElementById("btnRefresh").addEventListener("click", function() {
-  loadFileList();
+  loadRadiationFileList();
+  dataElement.innerHTML = "";
+  csvData = "";
+  selectedFile = "";
+  updateStatus("Refreshing file list...");
 });
 
 // === APP START ===
 function onInit() {
-  console.log("=== Radiation Data Transfer App gestartet ===");
-  loadFileList();
+  updateStatus("Initializing Radiation Data Transfer...");
+  loadRadiationFileList();
 }
 
 // === TEST-FUNKTIONEN ===
-function testFileLoading() {
-  console.log("=== Test File Loading ===");
+function testInterface() {
+  updateStatus("Testing interface...");
   
   // Testdaten
-  var testData = "time,cpm\n12:30:45,150\n12:31:22,155\n12:32:00,160\n12:33:15,145\n12:34:33,170";
-  
-  // Simuliere Dateiliste
-  var testFiles = [
-    "RADIATION_2025-09-27.csv",
-    "RADIATION_2025-09-28.csv",
-    "RADIATION_2025-09-29.csv"
+  availableFiles = [
+    "RADIATION_2025-09-08.csv",
+    "RADIATION_2025-09-07.csv",
+    "RADIATION_2025-09-06.csv"
   ];
   
-  console.log("Test mit", testFiles.length, "Dateien");
-  availableFiles = testFiles;
   displayFileList();
   
-  // Erste Datei laden
-  setTimeout(function() {
-    selectedFile = testFiles[0];
-    csvData = testData;
-    displayCSVData(testData);
-  }, 1000);
-}
-
-// === DEBUGGING ===
-function debugInterface() {
-  console.log("=== Interface Debug ===");
-  console.log("Available Files:", availableFiles.length);
-  console.log("Selected File:", selectedFile);
-  console.log("CSV Data Length:", csvData.length);
+  // Testdaten für CSV
+  var testData = "time,cpm\n12:30:45,31\n12:31:22,35\n12:32:00,42\n12:33:15,38\n12:34:33,45";
+  csvData = testData;
+  displayCSVData(testData);
   
-  // Test-Output
-  console.log("Test Output:");
-  console.log("FONT_SIZES:", JSON.stringify(FONT_SIZES));
-  console.log("GLOBAL_SETTINGS:", JSON.stringify(GLOBAL_SETTINGS));
+  updateStatus("Test completed");
 }
 
-// === HILFSFUNKTIONEN ===
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+// === DEBUG-FUNKTIONEN ===
+function debugFileList() {
+  console.log("=== DEBUG FILE LIST ===");
+  console.log("Available files:", availableFiles);
+  console.log("Selected file:", selectedFile);
+  console.log("CSV data length:", csvData.length);
+  console.log("Cache entries:", Object.keys(fileDataCache).length);
 }
 
-function formatDate(filename) {
-  try {
-    var datePart = filename.replace("RADIATION_", "").replace(".csv", "");
-    var parts = datePart.split("-");
-    if (parts.length === 3) {
-      return parts[2] + "." + parts[1] + "." + parts[0];
-    }
-  } catch (e) {
-    // ignore
-  }
-  return filename;
-}
+// === HAUPTAUFRUF ===
+setTimeout(function() {
+  console.log("=== START RADIATION DATA TRANSFER ===");
+  onInit();
+}, 1000);
     </script>
   </body>
 </html>
