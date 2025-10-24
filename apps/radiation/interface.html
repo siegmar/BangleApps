@@ -1,87 +1,35 @@
-<!-- INTERFACE.HTML - KORRIGIERT MIT DATEIAUSWAHL -->
+<!-- KLEINE INTERFACE.HTML - NUR RADIATION_LIST.TXT LADEN -->
 <html>
   <head>
     <link rel="stylesheet" href="../../css/spectre.min.css">
-    <style>
-      .file-list {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ccc;
-        margin: 10px 0;
-        padding: 5px;
-      }
-      .file-item {
-        cursor: pointer;
-        padding: 5px;
-        border-bottom: 1px solid #eee;
-      }
-      .file-item:hover {
-        background-color: #f0f0f0;
-      }
-      .file-item.selected {
-        background-color: #007bff;
-        color: white;
-      }
-      table {
-        font-size: 12px;
-        width: 100%;
-        border-collapse: collapse;
-      }
-      th, td {
-        padding: 4px;
-        text-align: left;
-        border: 1px solid #ddd;
-      }
-      th {
-        background-color: #f2f2f2;
-      }
-    </style>
   </head>
   <body>
-    <h3>Radiation Data Transfer</h3>
-    
-    <!-- DATEI-AUSWAHL -->
-    <div>
-      <h4>Verfügbare Log-Dateien:</h4>
-      <div id="fileList" class="file-list">
-        <p>Lade Dateiliste...</p>
-      </div>
-    </div>
-    
-    <!-- DATEN-ANZEIGE -->
-    <div id="data"></div>
-    
-    <!-- BUTTONS -->
-    <div style="margin-top: 15px;">
-      <button class="btn btn-primary" id="btnLoad">Load Selected</button>
-      <button class="btn btn-success" id="btnSave">Save as CSV</button>
-      <button class="btn btn-error" id="btnDelete">Delete File</button>
-      <button class="btn btn-default" id="btnRefresh">Refresh</button>
-    </div>
+    <h3>Radiation List Loader</h3>
+    <div id="fileList"></div>
+    <button class="btn btn-primary" id="btnLoad">Load List</button>
+    <button class="btn btn-default" id="btnRefresh">Refresh</button>
 
     <script src="../../core/lib/interface.js"></script>
     <script>
-// === GLOBALE VARIABLEN ===
-var dataElement = document.getElementById("data");
+// === KLEINE VERSION MIT RADIATION_LIST.TXT ===
 var fileListElement = document.getElementById("fileList");
-var csvData = "";
-var selectedFile = "";
 var availableFiles = [];
 
-// === DATEI-LISTE LADEN ===
-function loadRadiationFileList() {
-  console.log("=== Lade Radiation-Dateiliste ===");
+// RADIATION_LIST.txt laden
+function loadRadiationList() {
+  console.log("=== Lade RADIATION_LIST.txt ===");
   
-  Util.showModal("Loading file list...");
+  Util.showModal("Loading...");
   
-  // RADIATION_LIST.txt laden
-  Util.readStorage("RADIATION_LIST.txt", function(listContent) {
+  Util.readStorage("RADIATION_LIST.txt", function(data) {
     try {
-      if (listContent && listContent.length > 0) {
-        // Liste erfolgreich geladen
+      Util.hideModal();
+      
+      if (data && data.length > 0) {
         console.log("? RADIATION_LIST.txt geladen");
         
-        var lines = listContent.split('\n').filter(line => line.trim() !== "");
+        // Liste parsen
+        var lines = data.split('\n').filter(line => line.trim() !== "");
         var logs = [];
         
         // Nur RADIATION_*.csv Dateien
@@ -95,244 +43,57 @@ function loadRadiationFileList() {
         logs.sort().reverse();
         availableFiles = logs;
         
-        Util.hideModal();
         displayFileList();
         
       } else {
-        // Liste leer oder nicht gefunden
-        console.log("? RADIATION_LIST.txt leer oder nicht gefunden");
-        
-        // ALTERNATIVE: Alle Dateien auflisten
-        var allFiles = require("Storage").list();
-        var logs = [];
-        
-        for (var j = 0; j < allFiles.length; j++) {
-          var f = allFiles[j];
-          if (typeof f === 'string') {
-            if (f.startsWith("RADIATION_") && f.endsWith(".csv")) {
-              logs.push(f);
-            }
-          }
-        }
-        
-        logs.sort().reverse();
-        availableFiles = logs;
-        
-        Util.hideModal();
-        displayFileList();
-        
-        if (logs.length === 0) {
-          E.showMessage("Keine Log-Dateien", "Fehler");
-          setTimeout(showLogFileMenu, 2000);
-        }
+        console.log("? Leere RADIATION_LIST.txt");
+        fileListElement.innerHTML = "<p>Keine Dateien gefunden</p>";
+        availableFiles = [];
       }
       
     } catch (e) {
-      console.log("Fehler beim Laden der Liste:", e.message);
       Util.hideModal();
-      
-      // Fallback: Alle Dateien auflisten
-      var allFiles = require("Storage").list();
-      var logs = [];
-      
-      for (var k = 0; k < allFiles.length; k++) {
-        var f = allFiles[k];
-        if (typeof f === 'string') {
-          if (f.startsWith("RADIATION_") && f.endsWith(".csv")) {
-            logs.push(f);
-          }
-        }
-      }
-      
-      logs.sort().reverse();
-      availableFiles = logs;
-      
-      displayFileList();
-      
-      if (logs.length === 0) {
-        E.showMessage("Keine Dateien", "Fehler");
-        setTimeout(showLogFileMenu, 2000);
-      }
+      console.log("? Fehler:", e.message);
+      fileListElement.innerHTML = "<p>Fehler: " + e.message + "</p>";
+      availableFiles = [];
     }
   });
 }
 
-// === DATEI-LISTE ANZEIGEN ===
+// Dateiliste anzeigen
 function displayFileList() {
+  console.log("=== Zeige Dateiliste ===");
+  console.log("Dateien:", availableFiles.length);
+  
   if (availableFiles.length === 0) {
     fileListElement.innerHTML = "<p>Keine Log-Dateien gefunden</p>";
     return;
   }
   
-  var html = "";
+  var html = "<h4>Verfügbare Dateien:</h4><ul>";
   for (var i = 0; i < availableFiles.length; i++) {
     var filename = availableFiles[i];
     var display = filename.replace("RADIATION_", "").replace(".csv", "");
-    html += `<div class="file-item" data-file="${filename}">${display}</div>`;
+    html += "<li>" + display + "</li>";
   }
+  html += "</ul>";
   
   fileListElement.innerHTML = html;
-  
-  // Click-Handler
-  var fileItems = document.querySelectorAll('.file-item');
-  fileItems.forEach(function(item) {
-    item.addEventListener('click', function() {
-      // Alle abwählen
-      fileItems.forEach(i => i.classList.remove('selected'));
-      
-      // Dieses auswählen
-      this.classList.add('selected');
-      selectedFile = this.getAttribute('data-file');
-      
-      console.log("Ausgewählt:", selectedFile);
-    });
-  });
-  
-  // Erste Datei auswählen
-  if (fileItems.length > 0) {
-    fileItems[0].classList.add('selected');
-    selectedFile = fileItems[0].getAttribute('data-file');
-    console.log("Standard-Auswahl:", selectedFile);
-  }
 }
 
-// === AUSGEWÄHLTE DATEI LADEN ===
-function loadSelectedFile() {
-  if (!selectedFile) {
-    alert("Bitte Datei auswählen!");
-    return;
-  }
-  
-  Util.showModal("Loading " + selectedFile + "...");
-  
-  Util.readStorageFile(selectedFile, function(data) {
-    try {
-      if (data && data.length > 0) {
-        csvData = data.trim();
-        displayCSVData(csvData);
-      } else {
-        dataElement.innerHTML = "<b>Leere Datei: " + selectedFile + "</b>";
-        csvData = "";
-      }
-    } catch (e) {
-      dataElement.innerHTML = "<b>Fehler beim Laden: " + e.message + "</b>";
-      csvData = "";
-    }
-    
-    Util.hideModal();
-  });
-}
-
-// === CSV-DATEN ANZEIGEN ===
-function displayCSVData(data) {
-  if (!data || data.length === 0) {
-    dataElement.innerHTML = "<b>Keine Daten vorhanden</b>";
-    return;
-  }
-  
-  try {
-    var lines = data.split('\n').filter(line => line.trim() !== "");
-    
-    if (lines.length === 0) {
-      dataElement.innerHTML = "<b>Keine gültigen Daten</b>";
-      return;
-    }
-    
-    // Header
-    var header = lines[0];
-    var headerParts = header.split(',');
-    
-    // Datenzeilen
-    var dataLines = lines.slice(1);
-    
-    // Tabelle erstellen
-    var tableHtml = `<table class="table table-striped">
-      <thead>
-        <tr>`;
-    
-    // Header-Zeilen
-    for (var h = 0; h < headerParts.length; h++) {
-      tableHtml += `<th>${headerParts[h].trim()}</th>`;
-    }
-    tableHtml += `</tr>
-      </thead>
-      <tbody>`;
-    
-    // Erste 20 Datenzeilen
-    var displayLines = Math.min(20, dataLines.length);
-    for (var i = 0; i < displayLines; i++) {
-      var line = dataLines[i];
-      var parts = line.split(',');
-      
-      tableHtml += `<tr>`;
-      for (var j = 0; j < parts.length; j++) {
-        tableHtml += `<td>${parts[j].trim()}</td>`;
-      }
-      tableHtml += `</tr>`;
-    }
-    
-    tableHtml += `</tbody></table>`;
-    
-    // Mehr anzeigen wenn nötig
-    if (dataLines.length > 20) {
-      tableHtml += `<p><i>... und ${dataLines.length - 20} weitere Zeilen</i></p>`;
-    }
-    
-    dataElement.innerHTML = tableHtml;
-    
-  } catch (e) {
-    dataElement.innerHTML = "<b>Fehler beim Anzeigen: " + e.message + "</b>";
-  }
-}
-
-// === BUTTON-EVENTS ===
+// Button-Events
 document.getElementById("btnLoad").addEventListener("click", function() {
-  loadSelectedFile();
-});
-
-document.getElementById("btnSave").addEventListener("click", function() {
-  if (csvData && csvData.length > 0 && selectedFile) {
-    var filename = selectedFile.replace(".csv", "");
-    Util.saveCSV(filename, csvData);
-  } else {
-    alert("Keine Daten zum Speichern!");
-  }
-});
-
-document.getElementById("btnDelete").addEventListener("click", function() {
-  if (selectedFile) {
-    if (confirm("Wirklich löschen: " + selectedFile + "?")) {
-      Util.showModal("Deleting...");
-      
-      Util.eraseStorageFile(selectedFile, function() {
-        // Aus Liste entfernen
-        var index = availableFiles.indexOf(selectedFile);
-        if (index !== -1) {
-          availableFiles.splice(index, 1);
-        }
-        
-        // Liste neu anzeigen
-        displayFileList();
-        dataElement.innerHTML = "<b>Gelöscht: " + selectedFile + "</b>";
-        csvData = "";
-        selectedFile = "";
-        
-        Util.hideModal();
-      });
-    }
-  } else {
-    alert("Keine Datei zum Löschen!");
-  }
+  loadRadiationList();
 });
 
 document.getElementById("btnRefresh").addEventListener("click", function() {
-  loadRadiationFileList();
+  loadRadiationList();
 });
 
-// === APP START ===
+// App starten
 setTimeout(function() {
-  console.log("=== START RADIATION DATA TRANSFER ===");
-  loadRadiationFileList();
+  console.log("=== START RADIATION LIST LOADER ===");
+  loadRadiationList();
 }, 1000);
     </script>
   </body>
