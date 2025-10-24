@@ -91,10 +91,11 @@ document.getElementById("btnRefresh").addEventListener("click", function() {
 });
 
 // App starten
-setTimeout(function() {
-  console.log("=== START RADIATION LIST LOADER ===");
-  loadRadiationList();
-}, 1000);
+//  console.log("=== START RADIATION LIST LOADER ===");
+  
+function onInit() {
+ loadRadiationList();
+}
     </script>
   </body>
 </html>
