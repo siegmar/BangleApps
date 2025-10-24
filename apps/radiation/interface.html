@@ -1,101 +1,63 @@
-<!-- KLEINE INTERFACE.HTML - NUR RADIATION_LIST.TXT LADEN -->
 <html>
   <head>
     <link rel="stylesheet" href="../../css/spectre.min.css">
   </head>
   <body>
-    <h3>Radiation List Loader</h3>
-    <div id="fileList"></div>
-    <button class="btn btn-primary" id="btnLoad">Load List</button>
-    <button class="btn btn-default" id="btnRefresh">Refresh</button>
+    <div id="data"></div>
+    <button class="btn btn-default" id="btnSave">Save</button>
+    <button class="btn btn-default" id="btnDelete">Delete</button>
 
     <script src="../../core/lib/interface.js"></script>
     <script>
-// === KLEINE VERSION MIT RADIATION_LIST.TXT ===
-var fileListElement = document.getElementById("fileList");
-var availableFiles = [];
+var dataElement = document.getElementById("data");
+var csvData = "";
 
-// RADIATION_LIST.txt laden
-function loadRadiationList() {
-  console.log("=== Lade RADIATION_LIST.txt ===");
-  
+function getData() {
+  // show loading window
   Util.showModal("Loading...");
-  
-  Util.readStorage("RADIATION_LIST.txt", function(data) {
-    try {
-      Util.hideModal();
-      
-      if (data && data.length > 0) {
-        console.log("? RADIATION_LIST.txt geladen");
-        
-        // Liste parsen
-        var lines = data.split('\n').filter(line => line.trim() !== "");
-        var logs = [];
-        
-        // Nur RADIATION_*.csv Dateien
-        for (var i = 0; i < lines.length; i++) {
-          var line = lines[i].trim();
-          if (line.startsWith("RADIATION_") && line.endsWith(".csv")) {
-            logs.push(line);
-          }
-        }
-        
-        logs.sort().reverse();
-        availableFiles = logs;
-        
-        displayFileList();
-        
-      } else {
-        console.log("? Leere RADIATION_LIST.txt");
-        fileListElement.innerHTML = "<p>Keine Dateien gefunden</p>";
-        availableFiles = [];
-      }
-      
-    } catch (e) {
-      Util.hideModal();
-      console.log("? Fehler:", e.message);
-      fileListElement.innerHTML = "<p>Fehler: " + e.message + "</p>";
-      availableFiles = [];
+  // get the data
+  dataElement.innerHTML = "";
+  Util.readStorageFile(`RADIATION_2025-09-27.csv`,data=>{
+    csvData = data.trim();
+    // remove window
+    Util.hideModal();
+    // If no data, report it and exit
+    if (data.length==0) {
+      dataElement.innerHTML = "<b>No data found</b>";
+      return;
     }
+    // Otherwise parse the data and output it as a table
+    dataElement.innerHTML = `<table>
+    <tr>
+      <th>Time</th>
+      <th>CPM</th>
+    </tr>`+data.trim().split("\n").map(l=>{
+      l = l.split(",");
+      return `<tr>
+      <td>${l[0]}</td>
+      <td>${l[1]}</td>
+      </tr>`
+    }).join("\n")+"</table>";
   });
 }
 
-// Dateiliste anzeigen
-function displayFileList() {
-  console.log("=== Zeige Dateiliste ===");
-  console.log("Dateien:", availableFiles.length);
-  
-  if (availableFiles.length === 0) {
-    fileListElement.innerHTML = "<p>Keine Log-Dateien gefunden</p>";
-    return;
-  }
-  
-  var html = "<h4>Verfügbare Dateien:</h4><ul>";
-  for (var i = 0; i < availableFiles.length; i++) {
-    var filename = availableFiles[i];
-    var display = filename.replace("RADIATION_", "").replace(".csv", "");
-    html += "<li>" + display + "</li>";
-  }
-  html += "</ul>";
-  
-  fileListElement.innerHTML = html;
-}
-
-// Button-Events
-document.getElementById("btnLoad").addEventListener("click", function() {
-  loadRadiationList();
+// You can call a utility function to save the data
+document.getElementById("btnSave").addEventListener("click", function() {
+  Util.saveCSV("CPMdata", csvData);
 });
-
-document.getElementById("btnRefresh").addEventListener("click", function() {
-  loadRadiationList();
+// Or you can also delete the file
+document.getElementById("btnDelete").addEventListener("click", function() {
+  Util.showModal("Deleting...");
+  Util.eraseStorageFile("RADIATION_2025-09-27.csv", function() {
+    Util.hideModal();
+    getData();
+  });
 });
-
-// App starten
-//  console.log("=== START RADIATION LIST LOADER ===");
-  
+// Called when app starts
 function onInit() {
- loadRadiationList();
+  getData();
 }
+
     </script>
   </body>
 </html>
