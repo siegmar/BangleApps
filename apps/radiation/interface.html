@@ -1,29 +1,32 @@
-<!-- INTERFACE.HTML - MIT RADIATION_LIST.TXT INTEGRATION -->
+<!-- INTERFACE.HTML - MIT VERSIONSANZEIGE -->
 <html>
   <head>
     <link rel="stylesheet" href="../../css/spectre.min.css">
     <style>
+      .version-info {
+        font-size: 12px;
+        color: #666;
+        text-align: right;
+        margin: 5px;
+      }
       .file-list {
         max-height: 200px;
         overflow-y: auto;
         border: 1px solid #ccc;
         margin: 10px 0;
         padding: 5px;
-        background-color: #f8f8f8;
       }
       .file-item {
         cursor: pointer;
-        padding: 8px;
+        padding: 5px;
         border-bottom: 1px solid #eee;
-        font-size: 14px;
       }
       .file-item:hover {
-        background-color: #e0e0e0;
+        background-color: #f0f0f0;
       }
       .file-item.selected {
         background-color: #007bff;
         color: white;
-        font-weight: bold;
       }
       table {
         font-size: 12px;
@@ -38,25 +41,17 @@
       th {
         background-color: #f2f2f2;
       }
-      .alert-cell {
-        background-color: #ffcccc;
-        font-weight: bold;
-      }
-      .status-bar {
-        background-color: #000;
-        color: #fff;
-        padding: 5px;
-        font-size: 12px;
-        margin-bottom: 10px;
-      }
     </style>
   </head>
   <body>
-    <div class="status-bar" id="status">Loading file list...</div>
+    <!-- VERSIONSANZEIGE -->
+    <div class="version-info">
+      Version: V001 - Radiation Data Interface
+    </div>
     
     <h3>Radiation Data Transfer</h3>
     
-    <!-- DATEI-LISTE AUS RADIATION_LIST.TXT -->
+    <!-- DATEI-LISTE -->
     <div>
       <h4>Available Log Files:</h4>
       <div id="fileList" class="file-list">
@@ -64,11 +59,8 @@
       </div>
     </div>
     
-    <!-- DATEN-TABELLE -->
-    <div id="dataContainer">
-      <h4>Data Preview:</h4>
-      <div id="data"></div>
-    </div>
+    <!-- DATEN-ANZEIGE -->
+    <div id="data"></div>
     
     <!-- BUTTONS -->
     <div style="margin-top: 15px;">
@@ -83,53 +75,45 @@
 // === GLOBALE VARIABLEN ===
 var dataElement = document.getElementById("data");
 var fileListElement = document.getElementById("fileList");
-var statusElement = document.getElementById("status");
 var csvData = "";
 var selectedFile = "";
 var availableFiles = [];
-var fileDataCache = {}; // Cache für geladene Dateien
 
-// === STATUS-ANZEIGE ===
-function updateStatus(message) {
-  statusElement.textContent = message;
-  console.log("[STATUS]", message);
-}
+// === VERSIONS-INFORMATION ===
+var INTERFACE_VERSION = "V001"; // ? Versionsnummer hinzugefügt!
+console.log("=== Radiation Data Interface " + INTERFACE_VERSION + " ===");
 
-// === DATEI-LISTE AUS RADIATION_LIST.TXT LADEN ===
+// === DATEI-LISTE LADEN ===
 function loadRadiationFileList() {
-  updateStatus("Loading RADIATION_LIST.txt...");
+  console.log("=== Lade Radiation-Dateiliste ===");
   
-  Util.readStorage("RADIATION_LIST.txt", function(data) {
-    try {
-      if (data && data.length > 0) {
-        // Dateiliste parsen
-        availableFiles = data.trim().split('\n')
-          .filter(line => line.trim() !== "")
-          .filter(filename => filename.startsWith("RADIATION_") && filename.endsWith(".csv"));
-        
-        availableFiles.sort().reverse(); // Neueste zuerst
-        
-        updateStatus("Found " + availableFiles.length + " log files");
-        displayFileList();
-        
-      } else {
-        updateStatus("No RADIATION_LIST.txt found");
-        fileListElement.innerHTML = "<p>No radiation log files found</p>";
-        availableFiles = [];
+  Util.showModal("Loading file list...");
+  
+  // Alle Dateien auflisten
+  var allFiles = require("Storage").list();
+  var logs = [];
+  
+  // Nur RADIATION_*.csv Dateien
+  for (var i = 0; i < allFiles.length; i++) {
+    var f = allFiles[i];
+    if (typeof f === 'string') {
+      if (f.startsWith("RADIATION_") && f.endsWith(".csv")) {
+        logs.push(f);
       }
-      
-    } catch (e) {
-      updateStatus("Error reading file list: " + e.message);
-      fileListElement.innerHTML = "<p>Error loading file list</p>";
-      availableFiles = [];
     }
-  });
+  }
+  
+  logs.sort().reverse();
+  availableFiles = logs;
+  
+  Util.hideModal();
+  displayFileList();
 }
 
 // === DATEI-LISTE ANZEIGEN ===
 function displayFileList() {
   if (availableFiles.length === 0) {
-    fileListElement.innerHTML = "<p>No log files available</p>";
+    fileListElement.innerHTML = "<p>Keine Log-Dateien gefunden</p>";
     return;
   }
   
@@ -142,7 +126,7 @@ function displayFileList() {
   
   fileListElement.innerHTML = html;
   
-  // Click-Handler für Dateiauswahl
+  // Click-Handler
   var fileItems = document.querySelectorAll('.file-item');
   fileItems.forEach(function(item) {
     item.addEventListener('click', function() {
@@ -152,63 +136,50 @@ function displayFileList() {
       // Dieses auswählen
       this.classList.add('selected');
       selectedFile = this.getAttribute('data-file');
-      updateStatus("Selected: " + selectedFile);
       
       // Automatisch laden
       loadSelectedFile();
     });
   });
   
-  // Erste Datei automatisch auswählen
+  // Erste Datei auswählen
   if (fileItems.length > 0) {
     fileItems[0].classList.add('selected');
     selectedFile = fileItems[0].getAttribute('data-file');
-    updateStatus("Auto-selected: " + selectedFile);
   }
 }
 
 // === AUSGEWÄHLTE DATEI LADEN ===
 function loadSelectedFile() {
   if (!selectedFile) {
-    dataElement.innerHTML = "<b>Please select a file first</b>";
+    dataElement.innerHTML = "<b>Bitte Datei auswählen</b>";
     return;
   }
   
-  updateStatus("Loading " + selectedFile + "...");
+  Util.showModal("Loading " + selectedFile + "...");
   
-  // Prüfen ob bereits im Cache
-  if (fileDataCache[selectedFile]) {
-    displayCSVData(fileDataCache[selectedFile]);
-    updateStatus("Loaded from cache: " + selectedFile);
-    return;
-  }
-  
-  // Datei laden
   Util.readStorageFile(selectedFile, function(data) {
     try {
       if (data && data.length > 0) {
         csvData = data.trim();
-        fileDataCache[selectedFile] = csvData; // Im Cache speichern
         displayCSVData(csvData);
-        updateStatus("Loaded: " + selectedFile);
       } else {
-        dataElement.innerHTML = "<b>Empty file: " + selectedFile + "</b>";
-        updateStatus("Empty file: " + selectedFile);
+        dataElement.innerHTML = "<b>Leere Datei: " + selectedFile + "</b>";
         csvData = "";
       }
-      
     } catch (e) {
-      dataElement.innerHTML = "<b>Error loading file: " + e.message + "</b>";
-      updateStatus("Error: " + e.message);
+      dataElement.innerHTML = "<b>Fehler beim Laden: " + e.message + "</b>";
       csvData = "";
     }
+    
+    Util.hideModal();
   });
 }
 
-// === CSV-DATEN ALS TABELLE ANZEIGEN ===
+// === CSV-DATEN ANZEIGEN ===
 function displayCSVData(data) {
   if (!data || data.length === 0) {
-    dataElement.innerHTML = "<b>No data available</b>";
+    dataElement.innerHTML = "<b>Keine Daten vorhanden</b>";
     return;
   }
   
@@ -216,11 +187,11 @@ function displayCSVData(data) {
     var lines = data.split('\n').filter(line => line.trim() !== "");
     
     if (lines.length === 0) {
-      dataElement.innerHTML = "<b>No valid data lines</b>";
+      dataElement.innerHTML = "<b>Keine gültigen Daten</b>";
       return;
     }
     
-    // Header-Zeile
+    // Header
     var header = lines[0];
     var headerParts = header.split(',');
     
@@ -232,7 +203,7 @@ function displayCSVData(data) {
       <thead>
         <tr>`;
     
-    // Header
+    // Header-Zeilen
     for (var h = 0; h < headerParts.length; h++) {
       tableHtml += `<th>${headerParts[h].trim()}</th>`;
     }
@@ -240,7 +211,7 @@ function displayCSVData(data) {
       </thead>
       <tbody>`;
     
-    // Erste 20 Datenzeilen (Performance)
+    // Erste 20 Datenzeilen
     var displayLines = Math.min(20, dataLines.length);
     for (var i = 0; i < displayLines; i++) {
       var line = dataLines[i];
@@ -248,19 +219,7 @@ function displayCSVData(data) {
       
       tableHtml += `<tr>`;
       for (var j = 0; j < parts.length; j++) {
-        var cellContent = parts[j].trim();
-        
-        // Alert-Zellen hervorheben (wenn CPM > 35)
-        if (j === 1) { // CPM-Spalte
-          var cpmValue = parseInt(cellContent) || 0;
-          if (cpmValue > 35) {
-            tableHtml += `<td class="alert-cell">${cellContent}</td>`;
-          } else {
-            tableHtml += `<td>${cellContent}</td>`;
-          }
-        } else {
-          tableHtml += `<td>${cellContent}</td>`;
-        }
+        tableHtml += `<td>${parts[j].trim()}</td>`;
       }
       tableHtml += `</tr>`;
     }
@@ -269,13 +228,13 @@ function displayCSVData(data) {
     
     // Info bei vielen Zeilen
     if (dataLines.length > 20) {
-      tableHtml += `<p><i>... and ${dataLines.length - 20} more lines</i></p>`;
+      tableHtml += `<p><i>... und ${dataLines.length - 20} weitere Zeilen</i></p>`;
     }
     
     dataElement.innerHTML = tableHtml;
     
   } catch (e) {
-    dataElement.innerHTML = "<b>Error displaying data: " + e.message + "</b>";
+    dataElement.innerHTML = "<b>Fehler beim Anzeigen: " + e.message + "</b>";
   }
 }
 
@@ -284,8 +243,7 @@ document.getElementById("btnLoad").addEventListener("click", function() {
   if (selectedFile) {
     loadSelectedFile();
   } else {
-    updateStatus("Please select a file first!");
-    alert("Please select a file first!");
+    alert("Bitte Datei auswählen!");
   }
 });
 
@@ -293,84 +251,67 @@ document.getElementById("btnSave").addEventListener("click", function() {
   if (csvData && csvData.length > 0 && selectedFile) {
     var filename = selectedFile.replace(".csv", "");
     Util.saveCSV(filename, csvData);
-    updateStatus("Saved: " + filename + ".csv");
   } else {
-    updateStatus("No data to save!");
-    alert("No data to save!");
+    alert("Keine Daten zum Speichern!");
   }
 });
 
 document.getElementById("btnDelete").addEventListener("click", function() {
   if (selectedFile) {
-    if (confirm("Really delete: " + selectedFile + "?")) {
-      updateStatus("Deleting " + selectedFile + "...");
+    if (confirm("Wirklich löschen: " + selectedFile + "?")) {
+      Util.showModal("Deleting " + selectedFile + "...");
       
       Util.eraseStorageFile(selectedFile, function() {
-        updateStatus("Deleted: " + selectedFile);
+        // Aus Liste entfernen
+        var index = availableFiles.indexOf(selectedFile);
+        if (index !== -1) {
+          availableFiles.splice(index, 1);
+        }
         
-        // Aus Cache entfernen
-        delete fileDataCache[selectedFile];
-        
-        // Liste neu laden
-        loadRadiationFileList();
-        dataElement.innerHTML = "<b>File deleted: " + selectedFile + "</b>";
+        // Liste neu anzeigen
+        displayFileList();
+        dataElement.innerHTML = "<b>Gelöscht: " + selectedFile + "</b>";
         csvData = "";
         selectedFile = "";
+        
+        Util.hideModal();
       });
     }
   } else {
-    updateStatus("No file selected!");
-    alert("No file selected!");
+    alert("Keine Datei ausgewählt!");
   }
 });
 
 document.getElementById("btnRefresh").addEventListener("click", function() {
   loadRadiationFileList();
-  dataElement.innerHTML = "";
-  csvData = "";
-  selectedFile = "";
-  updateStatus("Refreshing file list...");
 });
 
-// === APP START ===
+// === APP START MIT VERSIONSANZEIGE ===
 function onInit() {
-  updateStatus("Initializing Radiation Data Transfer...");
+  console.log("=== START RADIATION DATA INTERFACE " + INTERFACE_VERSION + " ===");
+  
+  // Versionsanzeige
+  var versionElement = document.querySelector('.version-info');
+  if (versionElement) {
+    versionElement.textContent = "Version: " + INTERFACE_VERSION + " - Radiation Data Interface";
+  }
+  
   loadRadiationFileList();
 }
 
 // === TEST-FUNKTIONEN ===
-function testInterface() {
-  updateStatus("Testing interface...");
+function testInterfaceVersion() {
+  console.log("=== TEST INTERFACE VERSION " + INTERFACE_VERSION + " ===");
   
   // Testdaten
-  availableFiles = [
-    "RADIATION_2025-09-08.csv",
-    "RADIATION_2025-09-07.csv",
-    "RADIATION_2025-09-06.csv"
-  ];
-  
-  displayFileList();
-  
-  // Testdaten für CSV
-  var testData = "time,cpm\n12:30:45,31\n12:31:22,35\n12:32:00,42\n12:33:15,38\n12:34:33,45";
+  var testData = "time,cpm\n12:30:45,150\n12:31:22,155\n12:32:00,160\n12:33:15,145\n12:34:33,170";
   csvData = testData;
   displayCSVData(testData);
-  
-  updateStatus("Test completed");
-}
-
-// === DEBUG-FUNKTIONEN ===
-function debugFileList() {
-  console.log("=== DEBUG FILE LIST ===");
-  console.log("Available files:", availableFiles);
-  console.log("Selected file:", selectedFile);
-  console.log("CSV data length:", csvData.length);
-  console.log("Cache entries:", Object.keys(fileDataCache).length);
 }
 
 // === HAUPTAUFRUF ===
 setTimeout(function() {
-  console.log("=== START RADIATION DATA TRANSFER ===");
+  console.log("=== START RADIATION DATA INTERFACE ===");
   onInit();
 }, 1000);
     </script>
