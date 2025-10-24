@@ -1,14 +1,8 @@
-<!-- INTERFACE.HTML - MIT VERSIONSNUMMER UND VERBESSERTE FEHLERBEHANDLUNG -->
+<!-- INTERFACE.HTML - KORRIGIERT MIT DATEIAUSWAHL -->
 <html>
   <head>
     <link rel="stylesheet" href="../../css/spectre.min.css">
     <style>
-      .version-info {
-        font-size: 12px;
-        color: #666;
-        text-align: right;
-        margin: 5px;
-      }
       .file-list {
         max-height: 200px;
         overflow-y: auto;
@@ -44,18 +38,13 @@
     </style>
   </head>
   <body>
-    <!-- VERSIONSNUMMER -->
-    <div class="version-info">
-      Version: V001 - Radiation Data Interface
-    </div>
-    
     <h3>Radiation Data Transfer</h3>
     
-    <!-- DATEI-LISTE -->
+    <!-- DATEI-AUSWAHL -->
     <div>
-      <h4>Available Log Files:</h4>
+      <h4>Verfügbare Log-Dateien:</h4>
       <div id="fileList" class="file-list">
-        <p>Loading...</p>
+        <p>Lade Dateiliste...</p>
       </div>
     </div>
     
@@ -64,10 +53,10 @@
     
     <!-- BUTTONS -->
     <div style="margin-top: 15px;">
-      <button class="btn btn-primary" id="btnLoad">Load Selected File</button>
+      <button class="btn btn-primary" id="btnLoad">Load Selected</button>
       <button class="btn btn-success" id="btnSave">Save as CSV</button>
       <button class="btn btn-error" id="btnDelete">Delete File</button>
-      <button class="btn btn-default" id="btnRefresh">Refresh List</button>
+      <button class="btn btn-default" id="btnRefresh">Refresh</button>
     </div>
 
     <script src="../../core/lib/interface.js"></script>
@@ -79,17 +68,13 @@ var csvData = "";
 var selectedFile = "";
 var availableFiles = [];
 
-// === VERSIONS-INFORMATION ===
-var INTERFACE_VERSION = "V001"; // ? Versionsnummer hinzugefügt!
-console.log("=== Radiation Data Interface " + INTERFACE_VERSION + " ===");
-
-// === DATEI-LISTE LADEN MIT VERBESSERTER FEHLERBEHANDLUNG ===
+// === DATEI-LISTE LADEN ===
 function loadRadiationFileList() {
-  console.log("=== Lade Radiation-Dateiliste MIT VERBESSERUNG ===");
+  console.log("=== Lade Radiation-Dateiliste ===");
   
   Util.showModal("Loading file list...");
   
-  // Versuche RADIATION_LIST.txt zu laden
+  // RADIATION_LIST.txt laden
   Util.readStorage("RADIATION_LIST.txt", function(listContent) {
     try {
       if (listContent && listContent.length > 0) {
@@ -114,10 +99,10 @@ function loadRadiationFileList() {
         displayFileList();
         
       } else {
-        // Liste leer oder nicht gefunden - ALTERNATIVE Methode
-        console.log("? RADIATION_LIST.txt nicht gefunden - verwende ALTERNATIVE Methode");
+        // Liste leer oder nicht gefunden
+        console.log("? RADIATION_LIST.txt leer oder nicht gefunden");
         
-        // ALLE Dateien auflisten und filtern
+        // ALTERNATIVE: Alle Dateien auflisten
         var allFiles = require("Storage").list();
         var logs = [];
         
@@ -136,17 +121,14 @@ function loadRadiationFileList() {
         Util.hideModal();
         displayFileList();
         
-        // Warnung anzeigen
         if (logs.length === 0) {
-          E.showMessage("Keine RADIATION-Dateien\\ngefunden", "Warnung");
-          setTimeout(function() {
-            showLogFileMenu();
-          }, 2000);
+          E.showMessage("Keine Log-Dateien", "Fehler");
+          setTimeout(showLogFileMenu, 2000);
         }
       }
       
     } catch (e) {
-      console.log("? Fehler beim Laden der Liste:", e.message);
+      console.log("Fehler beim Laden der Liste:", e.message);
       Util.hideModal();
       
       // Fallback: Alle Dateien auflisten
@@ -168,7 +150,7 @@ function loadRadiationFileList() {
       displayFileList();
       
       if (logs.length === 0) {
-        E.showMessage("Keine Dateien\\ngefunden", "Fehler");
+        E.showMessage("Keine Dateien", "Fehler");
         setTimeout(showLogFileMenu, 2000);
       }
     }
@@ -202,8 +184,7 @@ function displayFileList() {
       this.classList.add('selected');
       selectedFile = this.getAttribute('data-file');
       
-      // Automatisch laden
-      loadSelectedFile();
+      console.log("Ausgewählt:", selectedFile);
     });
   });
   
@@ -211,13 +192,14 @@ function displayFileList() {
   if (fileItems.length > 0) {
     fileItems[0].classList.add('selected');
     selectedFile = fileItems[0].getAttribute('data-file');
+    console.log("Standard-Auswahl:", selectedFile);
   }
 }
 
 // === AUSGEWÄHLTE DATEI LADEN ===
 function loadSelectedFile() {
   if (!selectedFile) {
-    dataElement.innerHTML = "<b>Bitte Datei auswählen</b>";
+    alert("Bitte Datei auswählen!");
     return;
   }
   
@@ -305,11 +287,7 @@ function displayCSVData(data) {
 
 // === BUTTON-EVENTS ===
 document.getElementById("btnLoad").addEventListener("click", function() {
-  if (selectedFile) {
-    loadSelectedFile();
-  } else {
-    alert("Bitte Datei auswählen!");
-  }
+  loadSelectedFile();
 });
 
 document.getElementById("btnSave").addEventListener("click", function() {
@@ -351,33 +329,10 @@ document.getElementById("btnRefresh").addEventListener("click", function() {
   loadRadiationFileList();
 });
 
-// === APP START MIT VERSIONSANZEIGE ===
-function onInit() {
-  console.log("=== START RADIATION DATA INTERFACE " + INTERFACE_VERSION + " ===");
-  
-  // Versionsanzeige
-  var versionElement = document.querySelector('.version-info');
-  if (versionElement) {
-    versionElement.textContent = "Version: " + INTERFACE_VERSION + " - Radiation Data Interface";
-  }
-  
-  loadRadiationFileList();
-}
-
-// === TEST-FUNKTIONEN ===
-function testInterfaceVersion() {
-  console.log("=== TEST INTERFACE VERSION " + INTERFACE_VERSION + " ===");
-  
-  // Testdaten
-  var testData = "time,cpm\n12:30:45,31\n12:31:22,35\n12:32:00,42\n12:33:15,38\n12:34:33,45";
-  csvData = testData;
-  displayCSVData(testData);
-}
-
-// === HAUPTAUFRUF ===
+// === APP START ===
 setTimeout(function() {
-  console.log("=== START RADIATION DATA INTERFACE " + INTERFACE_VERSION + " ===");
-  onInit();
+  console.log("=== START RADIATION DATA TRANSFER ===");
+  loadRadiationFileList();
 }, 1000);
     </script>
   </body>
