@@ -31,7 +31,7 @@
     </style>
   </head>
   <body>
-    <h3>Radiation File List 3</h3>
+    <h3>Radiation File List 4</h3>
     <div id="data"></div>
     <button class="btn btn-primary" id="btnLoad">Load List</button>
     <button class="btn btn-success" id="btnSave">Save List</button>
@@ -53,7 +53,7 @@ function getData() {
   // get the data
   dataElement.innerHTML = "";
   
-  Util.readStorage("RADIATION_LIST.txt", function(data) {
+  Util.readStorageFile("RADIATION_LIST.txt", function(data) {
     listData = data ? data.trim() : "";
     
     // remove window
