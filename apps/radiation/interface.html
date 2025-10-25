@@ -31,7 +31,7 @@
     </style>
   </head>
   <body>
-    <h3>Radiation File List 1</h3>
+    <h3>Radiation File List 2</h3>
     <div id="data"></div>
     <button class="btn btn-primary" id="btnLoad">Load List</button>
     <button class="btn btn-success" id="btnSave">Save List</button>
@@ -57,8 +57,12 @@ function getData() {
     listData = data ? data.trim() : "";
     
     // remove window
-    Util.hideModal();
-    
+    //Util.hideModal();
+     if (listData.length > 0) 
+	 {
+	   dataElement.innerHTML = "<b>file list found</b>";
+	}
+	
     // If no data, report it and exit
     if (!listData || listData.length == 0) {
       dataElement.innerHTML = "<b>No file list found</b>";
