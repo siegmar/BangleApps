@@ -55,7 +55,7 @@
     <div style="margin-top: 15px;">
       <button class="btn btn-primary" id="btnLoad">Load Selected</button>
       <button class="btn btn-success" id="btnSave">Save as CSV</button>
-      <button class="btn btn-error" id="btnDelete">Delete File</button>
+      <!-- <button class="btn btn-error" id="btnDelete">Delete File</button> -->
       <button class="btn btn-default" id="btnRefresh">Refresh List</button>
     </div>
 
@@ -218,7 +218,8 @@ function displayCSVData(data) {
       <tbody>`;
     
     // Erste 20 Datenzeilen
-    var displayLines = Math.min(20, dataLines.length);
+    //var displayLines = Math.min(20, dataLines.length);
+	var displayLines = dataLines.length;
     for (var i = 0; i < displayLines; i++) {
       var line = dataLines[i];
       var parts = line.split(',');
@@ -233,9 +234,11 @@ function displayCSVData(data) {
     tableHtml += `</tbody></table>`;
     
     // Mehr anzeigen wenn nötig
-    if (dataLines.length > 20) {
-      tableHtml += `<p><i>... und ${dataLines.length - 20} weitere Zeilen</i></p>`;
-    }
+    
+	//if (dataLines.length > 20) 
+	//{
+    //  tableHtml += `<p><i>... und ${dataLines.length - 20} weitere Zeilen</i></p>`;
+    //}
     
     dataElement.innerHTML = tableHtml;
     
